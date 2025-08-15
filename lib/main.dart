@@ -1,9 +1,10 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:quick_connect/main_navigation.dart';
 import 'viewmodels/auth_viewmodel.dart';
+import 'viewmodels/post_viewmodel.dart';
 import 'views/login_view.dart';
-import 'views/home_view.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,6 +14,7 @@ Future<void> main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthViewModel()),
+        ChangeNotifierProvider(create: (_) => PostViewModel()),
       ],
       child: const MyApp(),
     ),
@@ -49,7 +51,7 @@ class StartupView extends StatelessWidget {
           );
         }
         if (snapshot.data == true) {
-          return const HomeView();
+          return const MainNavigation();
         } else {
           return const LoginView();
         }
@@ -57,3 +59,4 @@ class StartupView extends StatelessWidget {
     );
   }
 }
+

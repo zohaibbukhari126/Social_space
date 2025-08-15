@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:quick_connect/views/login_view.dart';
 import '../viewmodels/auth_viewmodel.dart';
 
 class SignupView extends StatefulWidget {
@@ -232,6 +233,21 @@ class _SignupViewState extends State<SignupView> {
                                   ),
                                 ),
                               ),
+                              const SizedBox(height: 15),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const LoginView(),
+                              ),
+                            );
+                          },
+                          child: const Text(
+                            'Already have an account? Log in',
+                            style: TextStyle(color: Colors.deepPurple),
+                          ),
+                        ),
                       ],
                     ),
                   ),

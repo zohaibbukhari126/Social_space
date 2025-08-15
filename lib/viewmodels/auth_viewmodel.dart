@@ -1,7 +1,11 @@
+
+import 'dart:convert';
+import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/user.dart';
 
 class AuthViewModel extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -17,7 +21,7 @@ class AuthViewModel extends ChangeNotifier {
     User? user = _auth.currentUser;
     if (remember && user != null) {
       try {
-        await user.reload(); // Refresh token
+        await user.reload();
         return _auth.currentUser != null;
       } catch (_) {
         return false;
@@ -43,7 +47,7 @@ class AuthViewModel extends ChangeNotifier {
     }
   }
 
-  // Signup with Name & Save to Realtime Database
+  // Signup
   Future<String?> signup(String name, String email, String password) async {
     try {
       UserCredential cred = await _auth.createUserWithEmailAndPassword(
@@ -53,17 +57,64 @@ class AuthViewModel extends ChangeNotifier {
 
       await cred.user!.updateDisplayName(name);
 
-      // Save user profile in Realtime Database
-      await _db.child("users").child(cred.user!.uid).set({
-        "name": name,
-        "email": email,
-        "createdAt": DateTime.now().toIso8601String(),
-      });
+      AppUser appUser = AppUser(
+        uid: cred.user!.uid,
+        name: name,
+        email: email,
+        imageBase64: null,
+        followers: 0,
+        following: 0,
+      );
 
+      await _db.child("users").child(cred.user!.uid).set(appUser.toMap());
       return null;
     } on FirebaseAuthException catch (e) {
       return e.message;
     }
+  }
+
+  // Upload/Update profile image (Base64 in RTDB)
+  Future<void> updateProfileImage(File imageFile) async {
+    if (currentUser == null) return;
+
+    // Convert image to Base64 string
+    List<int> imageBytes = await imageFile.readAsBytes();
+    String base64Image = base64Encode(imageBytes);
+
+    await _db.child("users").child(currentUser!.uid).update({
+      "imageBase64": base64Image,
+    });
+
+    notifyListeners();
+  }
+
+  // Fetch user posts
+Future<List<Map<String, dynamic>>> getUserPosts(String uid) async {
+  DataSnapshot snapshot =
+      await _db.child("posts").orderByChild("uid").equalTo(uid).get();
+
+  if (snapshot.exists) {
+    final data = Map<String, dynamic>.from(snapshot.value as Map);
+    return data.values
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
+  }
+  return [];
+}
+
+
+  // Get current user details
+  Future<AppUser?> getCurrentUserDetails() async {
+    if (currentUser == null) return null;
+    DataSnapshot snapshot =
+        await _db.child("users").child(currentUser!.uid).get();
+    if (snapshot.exists) {
+      return AppUser.fromMap(
+        Map<String, dynamic>.from(snapshot.value as Map),
+        currentUser!.uid,
+      );
+    }
+    return null;
   }
 
   // Forgot Password
