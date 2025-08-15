@@ -1,19 +1,23 @@
 // lib/models/user.dart
 class AppUser {
-  final String uid;
-  final String name;
-  final String email;
-  final String? imageBase64; // profile image stored in Base64 format
-  final int followers;
-  final int following;
+  String uid;
+  String name;
+  String email;
+  String username;
+  String? imageBase64; // profile image stored in Base64 format
+  int followers;
+  int following;
+  int postsCount;
 
   AppUser({
     required this.uid,
     required this.name,
     required this.email,
+    required this.username,
     this.imageBase64,
     required this.followers,
     required this.following,
+    required this.postsCount,
   });
 
   Map<String, dynamic> toMap() {
@@ -21,9 +25,11 @@ class AppUser {
       'uid': uid,
       'name': name,
       'email': email,
+      'username': username,
       'imageBase64': imageBase64,
       'followers': followers,
       'following': following,
+      'postsCount': postsCount,
     };
   }
 
@@ -32,9 +38,11 @@ class AppUser {
       uid: uid,
       name: map['name'] ?? '',
       email: map['email'] ?? '',
+      username: map['username'] ?? '',
       imageBase64: map['imageBase64'],
       followers: map['followers'] ?? 0,
       following: map['following'] ?? 0,
+      postsCount: map['postsCount'] ?? 0,
     );
   }
 }

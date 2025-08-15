@@ -244,7 +244,7 @@ class _SignupViewState extends State<SignupView> {
                             );
                           },
                           child: const Text(
-                            'Already have an account? Log in',
+                            'Already have an account? Login',
                             style: TextStyle(color: Colors.deepPurple),
                           ),
                         ),

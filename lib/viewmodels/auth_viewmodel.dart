@@ -48,33 +48,37 @@ class AuthViewModel extends ChangeNotifier {
   }
 
   // Signup
-  Future<String?> signup(String name, String email, String password) async {
-    try {
-      UserCredential cred = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+Future<String?> signup(String name, String email, String password) async {
+  try {
+    UserCredential cred = await _auth.createUserWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
 
-      await cred.user!.updateDisplayName(name);
+    await cred.user!.updateDisplayName(name);
 
-      AppUser appUser = AppUser(
-        uid: cred.user!.uid,
-        name: name,
-        email: email,
-        imageBase64: null,
-        followers: 0,
-        following: 0,
-      );
+    String username = email.split('@')[0];
 
-      await _db.child("users").child(cred.user!.uid).set(appUser.toMap());
-      return null;
-    } on FirebaseAuthException catch (e) {
-      return e.message;
-    }
+    AppUser appUser = AppUser(
+      uid: cred.user!.uid,
+      name: name,
+      email: email,
+      username: username,
+      imageBase64: "",
+      followers: 0,
+      following: 0,
+      postsCount: 0,
+    );
+
+    await _db.child("users").child(cred.user!.uid).set(appUser.toMap());
+    return null;
+  } on FirebaseAuthException catch (e) {
+    return e.message;
   }
+}
 
   // Upload/Update profile image (Base64 in RTDB)
-  Future<void> updateProfileImage(File imageFile) async {
+  Future<void> updateProfileImage(File imageFile, File file) async {
     if (currentUser == null) return;
 
     // Convert image to Base64 string
@@ -91,7 +95,7 @@ class AuthViewModel extends ChangeNotifier {
   // Fetch user posts
 Future<List<Map<String, dynamic>>> getUserPosts(String uid) async {
   DataSnapshot snapshot =
-      await _db.child("posts").orderByChild("uid").equalTo(uid).get();
+      await _db.child("posts").orderByChild("userId").equalTo(uid).get();
 
   if (snapshot.exists) {
     final data = Map<String, dynamic>.from(snapshot.value as Map);
@@ -101,6 +105,7 @@ Future<List<Map<String, dynamic>>> getUserPosts(String uid) async {
   }
   return [];
 }
+
 
 
   // Get current user details

@@ -118,18 +118,16 @@ class _LoginViewState extends State<LoginView> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                Checkbox(
-                                  value: rememberMe,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      rememberMe = value ?? false;
-                                    });
-                                  },
-                                ),
-                                const Text('Remember me'),
-                              ],
+                            CheckboxListTile(
+                              title: const Text('Remember me'),
+                              value: rememberMe,
+                              onChanged: (value) {
+                                setState(() {
+                                  rememberMe = value ?? false;
+                                });
+                              },
+                              contentPadding: const EdgeInsets.all(0),
+                              controlAffinity: ListTileControlAffinity.leading,
                             ),
                             Align(
                               alignment: Alignment.centerRight,
