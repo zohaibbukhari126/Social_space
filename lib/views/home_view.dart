@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import 'package:quick_connect/widgets/like_button_widget.dart';
 import '../viewmodels/post_viewmodel.dart';
 import '../models/post.dart';
-import 'new_post_view.dart';
 
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
@@ -56,7 +55,13 @@ class _HomeViewState extends State<HomeView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Quick Connect"), centerTitle: true),
+      appBar: AppBar(
+        title: const Text("Quick Connect"),
+        backgroundColor: Colors.deepPurple,
+        foregroundColor: Colors.white,
+        centerTitle: true,
+        elevation: 0,
+      ),
       body: FutureBuilder<List<Post>>(
         future: _postsFuture,
         builder: (context, snapshot) {
@@ -111,15 +116,13 @@ class _HomeViewState extends State<HomeView> {
                           CircleAvatar(
                             radius: 20,
                             backgroundColor: Colors.grey[300],
-                            backgroundImage:
-                                (post.userProfileImage != null &&
+                            backgroundImage: (post.userProfileImage != null &&
                                     post.userProfileImage!.isNotEmpty)
                                 ? MemoryImage(
                                     base64Decode(post.userProfileImage!),
                                   )
                                 : null,
-                            child:
-                                (post.userProfileImage == null ||
+                            child: (post.userProfileImage == null ||
                                     post.userProfileImage!.isEmpty)
                                 ? const Icon(Icons.person, color: Colors.white)
                                 : null,
@@ -180,27 +183,6 @@ class _HomeViewState extends State<HomeView> {
             ),
           );
         },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final newPost = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const NewPostView()),
-          );
-
-          if (newPost is Post) {
-            final existingPosts = await _postsFuture;
-            setState(() {
-              _postsFuture = Future.value([newPost, ...existingPosts]);
-            });
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Post uploaded successfully!")),
-            );
-          } else {
-            _refreshPosts();
-          }
-        },
-        child: const Icon(Icons.add),
       ),
     );
   }

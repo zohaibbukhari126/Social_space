@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:quick_connect/main_navigation.dart';
+import 'package:quick_connect/widgets/gradient_button.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import 'signup_view.dart';
 import 'forgot_password_view.dart';
@@ -151,35 +152,20 @@ class _LoginViewState extends State<LoginView> {
                         ),
 
                         const SizedBox(height: 20),
-                        isLoading
-                            ? const CircularProgressIndicator()
-                            : SizedBox(
-                                width: double.infinity,
-                                height: 50,
-                                child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    padding: EdgeInsets.zero,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  onPressed: () async {
-                                    if (_formKey.currentState!.validate()) {
-                                      setState(() => isLoading = true);
-                                      String? error = await authVM.login(
+                        GradientButton(
+                          text: isLoading ? 'Logging in...' : 'Login',
+                          onPressed: isLoading
+                              ? null
+                              : () async {
+                                  if (_formKey.currentState!.validate()) {
+                                    setState(() => isLoading = true);
+                                    try {
+                                      final success = await authVM.login(
                                         _emailController.text.trim(),
                                         _passwordController.text.trim(),
                                         rememberMe,
                                       );
-                                      setState(() => isLoading = false);
-
-                                      if (error != null) {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          SnackBar(content: Text(error)),
-                                        );
-                                      } else {
+                                      if (success != null) {
                                         Navigator.pushReplacement(
                                           context,
                                           MaterialPageRoute(
@@ -187,35 +173,29 @@ class _LoginViewState extends State<LoginView> {
                                                 const MainNavigation(),
                                           ),
                                         );
+                                      } else {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                                'Login failed. Please try again.'),
+                                          ),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(content: Text("Error: $e")),
+                                      );
+                                    } finally {
+                                      if (mounted) {
+                                        setState(() => isLoading = false);
                                       }
                                     }
-                                  },
-                                  child: Ink(
-                                    decoration: BoxDecoration(
-                                      gradient: const LinearGradient(
-                                        colors: [
-                                          Colors.deepPurple,
-                                          Colors.purpleAccent,
-                                        ],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Container(
-                                      alignment: Alignment.center,
-                                      child: const Text(
-                                        'Login',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
+                                  }
+                                },
+                          isLoading: isLoading,
+                        ),
                         const SizedBox(height: 15),
                         TextButton(
                           onPressed: () {

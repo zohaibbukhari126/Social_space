@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:quick_connect/views/login_view.dart';
+import 'package:quick_connect/widgets/gradient_button.dart';
 import '../viewmodels/auth_viewmodel.dart';
 
 class SignupView extends StatefulWidget {
@@ -162,78 +163,46 @@ class _SignupViewState extends State<SignupView> {
                           },
                         ),
                         const SizedBox(height: 20),
-                        isLoading
-                            ? const CircularProgressIndicator()
-                            : SizedBox(
-                                width: double.infinity,
-                                height: 50,
-                                child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    padding: EdgeInsets.zero,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
+                        GradientButton(
+                          text: 'Sign Up',
+                          onPressed: () async {
+                            if (_formKey.currentState!.validate()) {
+                              setState(() => isLoading = true);
+                              try {
+                                String? error = await authVM.signup(
+                                  _nameController.text.trim(),
+                                  _emailController.text.trim(),
+                                  _passwordController.text.trim(),
+                                );
+
+                                if (!mounted) return;
+
+                                setState(() => isLoading = false);
+
+                                if (error != null) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(error)),
+                                  );
+                                } else {
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Account created successfully!'),
                                     ),
-                                  ),
-                                  onPressed: () async {
-                                    if (_formKey.currentState!.validate()) {
-                                      setState(() => isLoading = true);
-
-                                      try {
-                                        String? error = await authVM.signup(
-                                          _nameController.text.trim(),
-                                          _emailController.text.trim(),
-                                          _passwordController.text.trim(),
-                                        );
-
-                                        if (!mounted) return;
-
-                                        setState(() => isLoading = false);
-
-                                        if (error != null) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(content: Text(error)),
-                                          );
-                                        } else {
-                                          Navigator.pop(context);
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(
-                                              content: Text('Account created successfully!'),
-                                            ),
-                                          );
-                                        }
-                                      } catch (e) {
-                                        if (!mounted) return;
-                                        setState(() => isLoading = false);
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text('Error: $e')),
-                                        );
-                                      }
-                                    }
-                                  },
-                                  child: Ink(
-                                    decoration: BoxDecoration(
-                                      gradient: const LinearGradient(
-                                        colors: [Colors.deepPurple, Colors.purpleAccent],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Container(
-                                      alignment: Alignment.center,
-                                      child: const Text(
-                                        'Sign Up',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 15),
+                                  );
+                                }
+                              } catch (e) {
+                                if (!mounted) return;
+                                setState(() => isLoading = false);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Error: $e')),
+                                );
+                              }
+                            }
+                          },
+                          isLoading: isLoading,
+                        ),
+                        const SizedBox(height: 15),
                         TextButton(
                           onPressed: () {
                             Navigator.pushReplacement(

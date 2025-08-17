@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:quick_connect/widgets/gradient_button.dart';
 import '../viewmodels/post_viewmodel.dart';
 
 class NewPostView extends StatefulWidget {
@@ -27,41 +28,45 @@ class _NewPostViewState extends State<NewPostView> {
     }
   }
 
-Future<void> _submitPost() async {
-  if (!_formKey.currentState!.validate()) return;
+  Future<void> _submitPost() async {
+    if (!_formKey.currentState!.validate()) return;
 
-  setState(() => _isLoading = true);
+    setState(() => _isLoading = true);
 
-  try {
-    final post = await context.read<PostViewModel>().addPost(
-          _contentController.text.trim(),
-          imageFile: _selectedImage,
+    try {
+      final post = await context.read<PostViewModel>().addPost(
+        _contentController.text.trim(),
+        imageFile: _selectedImage,
+      );
+
+      if (mounted && post != null) {
+        // Pop back to HomeView and pass the new post
+        Navigator.pop(context, post);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Post uploaded successfully!')),
         );
-
-    if (mounted && post != null) {
-      // Pop back to HomeView and pass the new post
-      Navigator.pop(context, post);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Post uploaded successfully!')),
-      );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error: $e")));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
-  } catch (e) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
-      );
-    }
-  } finally {
-    if (mounted) setState(() => _isLoading = false);
   }
-}
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Create Post"),
+        backgroundColor: Colors.deepPurple,
+        foregroundColor: Colors.white,
+        centerTitle: true,
+        elevation: 0,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -76,8 +81,9 @@ Future<void> _submitPost() async {
                   labelText: "What's on your mind?",
                   border: OutlineInputBorder(),
                 ),
-                validator: (value) =>
-                    value == null || value.isEmpty ? "Content is required" : null,
+                validator: (value) => value == null || value.isEmpty
+                    ? "Content is required"
+                    : null,
               ),
               const SizedBox(height: 20),
               _selectedImage != null
@@ -85,10 +91,11 @@ Future<void> _submitPost() async {
                       children: [
                         Image.file(_selectedImage!, height: 200),
                         TextButton.icon(
-                          onPressed: () => setState(() => _selectedImage = null),
+                          onPressed: () =>
+                              setState(() => _selectedImage = null),
                           icon: const Icon(Icons.delete, color: Colors.red),
                           label: const Text("Remove Image"),
-                        )
+                        ),
                       ],
                     )
                   : TextButton.icon(
@@ -97,14 +104,10 @@ Future<void> _submitPost() async {
                       label: const Text("Add Image"),
                     ),
               const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _submitPost,
-                  child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text("Post"),
-                ),
+              GradientButton(
+                text: "Post", 
+                onPressed: _submitPost,
+                isLoading: _isLoading,
               ),
             ],
           ),

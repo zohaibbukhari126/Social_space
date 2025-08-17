@@ -38,15 +38,19 @@ class _ProfileViewState extends State<ProfileView> {
 
     if (snapshot.exists) {
       AppUser user = AppUser.fromMap(
-          Map<String, dynamic>.from(snapshot.value as Map), profileUid);
+        Map<String, dynamic>.from(snapshot.value as Map),
+        profileUid,
+      );
 
       final currentUserId = FirebaseAuth.instance.currentUser!.uid;
       bool following = false;
-      DataSnapshot followersSnap =
-          await FirebaseDatabase.instance.ref("users/$profileUid/followersList").get();
+      DataSnapshot followersSnap = await FirebaseDatabase.instance
+          .ref("users/$profileUid/followersList")
+          .get();
       if (followersSnap.exists) {
-        Map<String, dynamic> followers =
-            Map<String, dynamic>.from(followersSnap.value as Map);
+        Map<String, dynamic> followers = Map<String, dynamic>.from(
+          followersSnap.value as Map,
+        );
         following = followers.containsKey(currentUserId);
       }
 
@@ -62,13 +66,15 @@ class _ProfileViewState extends State<ProfileView> {
         final data = Map<String, dynamic>.from(postsSnap.value as Map);
         data.forEach((key, value) {
           Map<String, dynamic> postMap = Map<String, dynamic>.from(value);
-          posts.add(Post.fromMap(
-            postMap,
-            key,
-            currentUserId: currentUserId,
-            username: user.username,
-            userProfileImage: user.imageBase64,
-          ));
+          posts.add(
+            Post.fromMap(
+              postMap,
+              key,
+              currentUserId: currentUserId,
+              username: user.username,
+              userProfileImage: user.imageBase64,
+            ),
+          );
         });
         posts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       }
@@ -87,8 +93,9 @@ class _ProfileViewState extends State<ProfileView> {
   Future<void> _toggleFollow() async {
     final currentUserId = FirebaseAuth.instance.currentUser!.uid;
     final userRef = FirebaseDatabase.instance.ref("users/$profileUid");
-    final currentUserRef =
-        FirebaseDatabase.instance.ref("users/$currentUserId");
+    final currentUserRef = FirebaseDatabase.instance.ref(
+      "users/$currentUserId",
+    );
 
     if (isFollowing) {
       await userRef.child("followersList/$currentUserId").remove();
@@ -129,22 +136,22 @@ class _ProfileViewState extends State<ProfileView> {
     final authVM = context.read<AuthViewModel>();
 
     if (isLoading) {
-      return const Scaffold(
-          body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (userData == null) {
-      return const Scaffold(
-          body: Center(child: Text("No profile data found")));
+      return const Scaffold(body: Center(child: Text("No profile data found")));
     }
 
-    final isCurrentUser =
-        profileUid == FirebaseAuth.instance.currentUser!.uid;
+    final isCurrentUser = profileUid == FirebaseAuth.instance.currentUser!.uid;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(userData!.username),
+        backgroundColor: Colors.deepPurple,
+        foregroundColor: Colors.white,
         centerTitle: true,
+        elevation: 0,
         actions: isCurrentUser
             ? [
                 PopupMenuButton<String>(
@@ -159,16 +166,20 @@ class _ProfileViewState extends State<ProfileView> {
                       _logout(authVM);
                     }
                   },
-                  itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                    const PopupMenuItem<String>(
-                      value: 'edit',
-                      child: Text('Edit Profile'),
-                    ),
-                    const PopupMenuItem<String>(
-                      value: 'logout',
-                      child: Text('Logout', style: TextStyle(color: Colors.red)),
-                    ),
-                  ],
+                  itemBuilder: (BuildContext context) =>
+                      <PopupMenuEntry<String>>[
+                        const PopupMenuItem<String>(
+                          value: 'edit',
+                          child: Text('Edit Profile'),
+                        ),
+                        const PopupMenuItem<String>(
+                          value: 'logout',
+                          child: Text(
+                            'Logout',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ),
+                      ],
                 ),
               ]
             : null,
@@ -186,19 +197,21 @@ class _ProfileViewState extends State<ProfileView> {
                     alignment: Alignment.bottomRight,
                     children: [
                       CircleAvatar(
-                        radius: 50,
-                        backgroundImage: (userData!.imageBase64 != null &&
+                        radius: 24,
+                        backgroundImage:
+                            (userData!.imageBase64 != null &&
                                 userData!.imageBase64!.isNotEmpty)
                             ? MemoryImage(base64Decode(userData!.imageBase64!))
                             : null,
-                        child: (userData!.imageBase64 == null ||
+                        child:
+                            (userData!.imageBase64 == null ||
                                 userData!.imageBase64!.isEmpty)
-                            ? const Icon(Icons.person, size: 50)
+                            ? const Icon(Icons.person, size: 24)
                             : null,
                       ),
                       if (isCurrentUser)
                         Positioned(
-                          bottom: 0,
+                          bottom: -1,
                           right: 4,
                           child: Container(
                             padding: const EdgeInsets.all(6),
@@ -209,7 +222,7 @@ class _ProfileViewState extends State<ProfileView> {
                             child: const Icon(
                               Icons.add,
                               color: Colors.white,
-                              size: 20,
+                              size: 10,
                             ),
                           ),
                         ),
@@ -219,7 +232,10 @@ class _ProfileViewState extends State<ProfileView> {
                 const SizedBox(height: 16),
                 Text(
                   userData!.name,
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 20),
                 Row(
@@ -238,7 +254,9 @@ class _ProfileViewState extends State<ProfileView> {
                     width: double.infinity,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: isFollowing ? Colors.black : Colors.blue,
+                        backgroundColor: isFollowing
+                            ? Colors.black
+                            : Colors.blue,
                         foregroundColor: Colors.white,
                       ),
                       onPressed: _toggleFollow,
@@ -264,13 +282,19 @@ class _ProfileViewState extends State<ProfileView> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
                               post.username ?? "Unknown User",
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
                             ),
                             PopupMenuButton<String>(
                               onSelected: (value) {
@@ -284,7 +308,7 @@ class _ProfileViewState extends State<ProfileView> {
                                   child: Text("Delete Post"),
                                 ),
                               ],
-                            )
+                            ),
                           ],
                         ),
                       ),
@@ -305,10 +329,13 @@ class _ProfileViewState extends State<ProfileView> {
                       Padding(
                         padding: const EdgeInsets.all(8.0),
                         child: Text(
-                          "Posted on: ${post.createdAt.day.toString().padLeft(2,'0')}/"
-                          "${post.createdAt.month.toString().padLeft(2,'0')}/"
+                          "Posted on: ${post.createdAt.day.toString().padLeft(2, '0')}/"
+                          "${post.createdAt.month.toString().padLeft(2, '0')}/"
                           "${post.createdAt.year.toString().substring(2)}",
-                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
                         ),
                       ),
                     ],
