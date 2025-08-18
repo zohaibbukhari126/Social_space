@@ -44,7 +44,7 @@ class _MainNavigationState extends State<MainNavigation> {
     return Scaffold(
       body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex == 0 ? 0 : 1, // map to only 2 real screens
+        currentIndex: _selectedIndex == 0 ? 0 : 2, // 0: Home, 2: Profile
         onTap: (index) {
           if (index == 1) {
             // New Post special case

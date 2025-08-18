@@ -1,4 +1,3 @@
-
 import 'dart:convert';
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -13,21 +12,18 @@ class AuthViewModel extends ChangeNotifier {
 
   User? get currentUser => _auth.currentUser;
 
-  // Check if user is remembered
+  // Check if user is remembered (works offline too)
   Future<bool> checkRememberedUser() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     bool remember = prefs.getBool('rememberMe') ?? false;
 
-    User? user = _auth.currentUser;
-    if (remember && user != null) {
-      try {
-        await user.reload();
-        return _auth.currentUser != null;
-      } catch (_) {
-        return false;
-      }
+    // If user selected Remember Me → trust SharedPreferences
+    if (remember) {
+      return true;
     }
-    return false;
+
+    // Otherwise, fall back to FirebaseAuth session
+    return _auth.currentUser != null;
   }
 
   // Save Remember Me preference
@@ -48,34 +44,34 @@ class AuthViewModel extends ChangeNotifier {
   }
 
   // Signup
-Future<String?> signup(String name, String email, String password) async {
-  try {
-    UserCredential cred = await _auth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
+  Future<String?> signup(String name, String email, String password) async {
+    try {
+      UserCredential cred = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
-    await cred.user!.updateDisplayName(name);
+      await cred.user!.updateDisplayName(name);
 
-    String username = email.split('@')[0];
+      String username = email.split('@')[0];
 
-    AppUser appUser = AppUser(
-      uid: cred.user!.uid,
-      name: name,
-      email: email,
-      username: username,
-      imageBase64: "",
-      followers: 0,
-      following: 0,
-      postsCount: 0,
-    );
+      AppUser appUser = AppUser(
+        uid: cred.user!.uid,
+        name: name,
+        email: email,
+        username: username,
+        imageBase64: "",
+        followers: 0,
+        following: 0,
+        postsCount: 0,
+      );
 
-    await _db.child("users").child(cred.user!.uid).set(appUser.toMap());
-    return null;
-  } on FirebaseAuthException catch (e) {
-    return e.message;
+      await _db.child("users").child(cred.user!.uid).set(appUser.toMap());
+      return null;
+    } on FirebaseAuthException catch (e) {
+      return e.message;
+    }
   }
-}
 
   // Upload/Update profile image (Base64 in RTDB)
   Future<void> updateProfileImage(File imageFile, File file) async {
@@ -93,26 +89,29 @@ Future<String?> signup(String name, String email, String password) async {
   }
 
   // Fetch user posts
-Future<List<Map<String, dynamic>>> getUserPosts(String uid) async {
-  DataSnapshot snapshot =
-      await _db.child("posts").orderByChild("userId").equalTo(uid).get();
+  Future<List<Map<String, dynamic>>> getUserPosts(String uid) async {
+    DataSnapshot snapshot = await _db
+        .child("posts")
+        .orderByChild("userId")
+        .equalTo(uid)
+        .get();
 
-  if (snapshot.exists) {
-    final data = Map<String, dynamic>.from(snapshot.value as Map);
-    return data.values
-        .map((e) => Map<String, dynamic>.from(e as Map))
-        .toList();
+    if (snapshot.exists) {
+      final data = Map<String, dynamic>.from(snapshot.value as Map);
+      return data.values
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+    }
+    return [];
   }
-  return [];
-}
-
-
 
   // Get current user details
   Future<AppUser?> getCurrentUserDetails() async {
     if (currentUser == null) return null;
-    DataSnapshot snapshot =
-        await _db.child("users").child(currentUser!.uid).get();
+    DataSnapshot snapshot = await _db
+        .child("users")
+        .child(currentUser!.uid)
+        .get();
     if (snapshot.exists) {
       return AppUser.fromMap(
         Map<String, dynamic>.from(snapshot.value as Map),
