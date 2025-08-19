@@ -12,24 +12,24 @@ class AuthViewModel extends ChangeNotifier {
 
   User? get currentUser => _auth.currentUser;
 
-  // Check if user is remembered (works offline too)
+  // Check if user is remembered (checkbox state only)
   Future<bool> checkRememberedUser() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     bool remember = prefs.getBool('rememberMe') ?? false;
-
-    // If user selected Remember Me → trust SharedPreferences
-    if (remember) {
-      return true;
-    }
-
-    // Otherwise, fall back to FirebaseAuth session
-    return _auth.currentUser != null;
+    // User is remembered if checkbox is true and Firebase session exists
+    return remember && _auth.currentUser != null;
   }
 
   // Save Remember Me preference
   Future<void> setRememberMe(bool value) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setBool('rememberMe', value);
+  }
+
+  // Get Remember Me preference
+  Future<bool> getRememberMe() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('rememberMe') ?? false;
   }
 
   // Login

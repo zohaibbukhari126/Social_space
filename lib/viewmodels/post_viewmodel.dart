@@ -43,6 +43,14 @@ class PostViewModel extends ChangeNotifier {
     );
 
     await _db.child("posts").child(postId).set(post.toMap());
+    // Increment postsCount for user
+    final userRef = _db.child("users").child(_auth.currentUser!.uid);
+    DataSnapshot userSnap2 = await userRef.get();
+    if (userSnap2.exists) {
+      final userData2 = Map<String, dynamic>.from(userSnap2.value as Map);
+      int postsCount = (userData2['postsCount'] ?? 0) as int;
+      await userRef.update({"postsCount": postsCount + 1});
+    }
     notifyListeners();
     return post;
   }
@@ -123,6 +131,14 @@ class PostViewModel extends ChangeNotifier {
       Map value = snapshot.value as Map;
       if (value['userId'] == _auth.currentUser!.uid) {
         await _db.child("posts").child(postId).remove();
+        // Decrement postsCount for user
+        final userRef = _db.child("users").child(_auth.currentUser!.uid);
+        DataSnapshot userSnap2 = await userRef.get();
+        if (userSnap2.exists) {
+          final userData2 = Map<String, dynamic>.from(userSnap2.value as Map);
+          int postsCount = (userData2['postsCount'] ?? 1) as int;
+          await userRef.update({"postsCount": (postsCount > 0 ? postsCount - 1 : 0)});
+        }
       }
     }
     notifyListeners();

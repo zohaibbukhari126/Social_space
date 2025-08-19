@@ -12,9 +12,8 @@ class MainNavigation extends StatefulWidget {
 }
 
 class _MainNavigationState extends State<MainNavigation> {
-  int _selectedIndex = 0;
+  int _selectedIndex = 0; // 0 = Home, 1 = Profile
 
-  // Only real screens (Home + Profile)
   final List<Widget> _screens = [
     const HomeView(),
     const ProfileView(),
@@ -27,12 +26,10 @@ class _MainNavigationState extends State<MainNavigation> {
     );
 
     if (newPost is Post) {
-      // Go back to Home tab
       setState(() {
-        _selectedIndex = 0;
+        _selectedIndex = 0; // Back to Home
       });
 
-      // Show confirmation
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Post uploaded successfully!")),
       );
@@ -43,23 +40,47 @@ class _MainNavigationState extends State<MainNavigation> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: _screens[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex == 0 ? 0 : 2, // 0: Home, 2: Profile
-        onTap: (index) {
-          if (index == 1) {
-            // New Post special case
-            _openNewPost(context);
-          } else if (index == 2) {
-            setState(() => _selectedIndex = 1); // Profile screen
-          } else {
-            setState(() => _selectedIndex = 0); // Home screen
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.add), label: "New Post"),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-        ],
+
+      // floating "+" button in the center
+      floatingActionButton: FloatingActionButton(
+        shape: const CircleBorder(),
+        backgroundColor: Colors.blueAccent,
+        child: const Icon(Icons.add, size: 32, color: Colors.white),
+        onPressed: () => _openNewPost(context),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+
+      // custom bottom bar
+      bottomNavigationBar: BottomAppBar(
+        shape: const CircularNotchedRectangle(),
+        notchMargin: 8.0,
+        child: SizedBox(
+          height: 60,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              // Home
+              IconButton(
+                icon: Icon(
+                  Icons.home,
+                  color: _selectedIndex == 0 ? Colors.blueAccent : Colors.grey,
+                ),
+                onPressed: () => setState(() => _selectedIndex = 0),
+              ),
+
+              const SizedBox(width: 48), // space for the FAB notch
+
+              // Profile
+              IconButton(
+                icon: Icon(
+                  Icons.person,
+                  color: _selectedIndex == 1 ? Colors.blueAccent : Colors.grey,
+                ),
+                onPressed: () => setState(() => _selectedIndex = 1),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:quick_connect/views/login_view.dart';
 import 'package:quick_connect/widgets/gradient_button.dart';
 import '../viewmodels/auth_viewmodel.dart';
 
@@ -205,12 +204,7 @@ class _SignupViewState extends State<SignupView> {
                         const SizedBox(height: 15),
                         TextButton(
                           onPressed: () {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const LoginView(),
-                              ),
-                            );
+                            Navigator.pop(context);
                           },
                           child: const Text(
                             'Already have an account? Login',

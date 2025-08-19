@@ -160,9 +160,11 @@ class _LoginViewState extends State<LoginView> {
                                   if (_formKey.currentState!.validate()) {
                                     setState(() => isLoading = true);
                                     try {
+                                      final email = _emailController.text.trim();
+                                      final password = _passwordController.text.trim();
                                       final success = await authVM.login(
-                                        _emailController.text.trim(),
-                                        _passwordController.text.trim(),
+                                        email,
+                                        password,
                                         rememberMe,
                                       );
                                       if (success != null) {

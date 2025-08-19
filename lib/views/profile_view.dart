@@ -3,10 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:quick_connect/viewmodels/post_viewmodel.dart';
+import 'package:quick_connect/widgets/like_button_widget.dart';
+import 'dart:io';
 import '../viewmodels/auth_viewmodel.dart';
 import '../models/post.dart';
 import '../models/user.dart';
 import 'login_view.dart';
+import '../widgets/gradient_button.dart';
 
 class ProfileView extends StatefulWidget {
   final String? userId; // if null, show current user
@@ -21,7 +26,12 @@ class _ProfileViewState extends State<ProfileView> {
   AppUser? userData;
   bool isLoading = true;
   List<Post> userPosts = [];
-  bool isFollowing = false;
+  late AuthViewModel authVM;
+
+  // ValueNotifiers for counts and follow status
+  late ValueNotifier<int> followersCountNotifier;
+  late ValueNotifier<bool> isFollowingNotifier;
+  late ValueNotifier<bool> followButtonLoadingNotifier;
 
   String get profileUid =>
       widget.userId ?? FirebaseAuth.instance.currentUser!.uid;
@@ -29,12 +39,26 @@ class _ProfileViewState extends State<ProfileView> {
   @override
   void initState() {
     super.initState();
+    authVM = context.read<AuthViewModel>();
+    followersCountNotifier = ValueNotifier(0);
+    isFollowingNotifier = ValueNotifier(false);
+    followButtonLoadingNotifier = ValueNotifier(false);
     _fetchProfileData();
+  }
+
+  @override
+  void dispose() {
+    followersCountNotifier.dispose();
+    isFollowingNotifier.dispose();
+    followButtonLoadingNotifier.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchProfileData() async {
     final ref = FirebaseDatabase.instance.ref("users/$profileUid");
     final snapshot = await ref.get();
+
+    if (!mounted) return;
 
     if (snapshot.exists) {
       AppUser user = AppUser.fromMap(
@@ -44,14 +68,32 @@ class _ProfileViewState extends State<ProfileView> {
 
       final currentUserId = FirebaseAuth.instance.currentUser!.uid;
       bool following = false;
+      int followersCount = 0;
+      int followingCount = 0;
+
+      // Get followers
       DataSnapshot followersSnap = await FirebaseDatabase.instance
           .ref("users/$profileUid/followersList")
           .get();
+      if (!mounted) return;
       if (followersSnap.exists) {
         Map<String, dynamic> followers = Map<String, dynamic>.from(
           followersSnap.value as Map,
         );
+        followersCount = followers.length;
         following = followers.containsKey(currentUserId);
+      }
+
+      // Get following
+      DataSnapshot followingSnap = await FirebaseDatabase.instance
+          .ref("users/$profileUid/followingList")
+          .get();
+      if (!mounted) return;
+      if (followingSnap.exists) {
+        Map<String, dynamic> followingMap = Map<String, dynamic>.from(
+          followingSnap.value as Map,
+        );
+        followingCount = followingMap.length;
       }
 
       // fetch user's posts
@@ -60,6 +102,7 @@ class _ProfileViewState extends State<ProfileView> {
           .orderByChild("userId")
           .equalTo(profileUid)
           .get();
+      if (!mounted) return;
 
       List<Post> posts = [];
       if (postsSnap.exists) {
@@ -79,47 +122,142 @@ class _ProfileViewState extends State<ProfileView> {
         posts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       }
 
+      if (!mounted) return;
       setState(() {
         userData = user;
-        isFollowing = following;
         userPosts = posts;
         isLoading = false;
       });
+
+      // Set ValueNotifiers
+      followersCountNotifier.value = followersCount;
+      isFollowingNotifier.value = following;
+      userData!.following = followingCount; // following count can remain static
     } else {
+      if (!mounted) return;
       setState(() => isLoading = false);
     }
   }
 
+  Future<void> _pickAndUploadImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile == null) return;
+
+    final imageFile = File(pickedFile.path);
+
+    // Immediately update UI
+    final bytes = await imageFile.readAsBytes();
+    if (!mounted) return;
+    setState(() {
+      userData!.imageBase64 = base64Encode(bytes);
+    });
+
+    try {
+      await authVM.updateProfileImage(imageFile, imageFile);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Profile photo uploaded successfully!")),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Failed to upload photo: $e")));
+    }
+  }
+
+  void _showProfileImageDialog({bool isCurrentUser = true}) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                radius: 150,
+                backgroundImage:
+                    (userData!.imageBase64 != null &&
+                        userData!.imageBase64!.isNotEmpty)
+                    ? MemoryImage(base64Decode(userData!.imageBase64!))
+                    : null,
+                child:
+                    (userData!.imageBase64 == null ||
+                        userData!.imageBase64!.isEmpty)
+                    ? const Icon(Icons.person, size: 100)
+                    : null,
+              ),
+              if (isCurrentUser) ...[
+                const SizedBox(height: 12),
+                IconButton(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    await _pickAndUploadImage();
+                  },
+                  icon: const Icon(Icons.edit, size: 28, color: Colors.white),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _toggleFollow() async {
+    if (followButtonLoadingNotifier.value) return; // prevent double click
+    followButtonLoadingNotifier.value = true;
+
     final currentUserId = FirebaseAuth.instance.currentUser!.uid;
     final userRef = FirebaseDatabase.instance.ref("users/$profileUid");
     final currentUserRef = FirebaseDatabase.instance.ref(
       "users/$currentUserId",
     );
 
-    if (isFollowing) {
-      await userRef.child("followersList/$currentUserId").remove();
-      await currentUserRef.child("followingList/$profileUid").remove();
-      setState(() {
-        isFollowing = false;
-        userData!.followers--;
-      });
-    } else {
-      await userRef.child("followersList/$currentUserId").set(true);
-      await currentUserRef.child("followingList/$profileUid").set(true);
-      setState(() {
-        isFollowing = true;
-        userData!.followers++;
-      });
+    // Optimistically update UI
+    final wasFollowing = isFollowingNotifier.value;
+    isFollowingNotifier.value = !wasFollowing;
+    followersCountNotifier.value += wasFollowing ? -1 : 1;
+
+    try {
+      if (wasFollowing) {
+        await userRef.child("followersList/$currentUserId").remove();
+        await currentUserRef.child("followingList/$profileUid").remove();
+      } else {
+        await userRef.child("followersList/$currentUserId").set(true);
+        await currentUserRef.child("followingList/$profileUid").set(true);
+      }
+    } catch (e) {
+      // revert UI in case of error
+      isFollowingNotifier.value = wasFollowing;
+      followersCountNotifier.value += wasFollowing ? 1 : -1;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to update follow status: $e")),
+      );
+    } finally {
+      followButtonLoadingNotifier.value = false;
     }
   }
 
   Future<void> _deletePost(String postId) async {
     await FirebaseDatabase.instance.ref("posts/$postId").remove();
+    if (!mounted) return;
     setState(() {
       userPosts.removeWhere((p) => p.postId == postId);
       userData!.postsCount--;
     });
+  }
+
+  String formatDate(DateTime date) {
+    return "${date.day.toString().padLeft(2, '0')}/"
+        "${date.month.toString().padLeft(2, '0')}/"
+        "${date.year.toString().substring(2)}";
+  }
+
+  Future<void> _toggleLike(Post post) async {
+    await context.read<PostViewModel>().toggleLike(post);
   }
 
   void _logout(AuthViewModel authVM) async {
@@ -133,8 +271,6 @@ class _ProfileViewState extends State<ProfileView> {
 
   @override
   Widget build(BuildContext context) {
-    final authVM = context.read<AuthViewModel>();
-
     if (isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -156,22 +292,12 @@ class _ProfileViewState extends State<ProfileView> {
             ? [
                 PopupMenuButton<String>(
                   onSelected: (String result) {
-                    if (result == 'edit') {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Edit profile feature coming soon"),
-                        ),
-                      );
-                    } else if (result == 'logout') {
+                    if (result == 'logout') {
                       _logout(authVM);
                     }
                   },
                   itemBuilder: (BuildContext context) =>
                       <PopupMenuEntry<String>>[
-                        const PopupMenuItem<String>(
-                          value: 'edit',
-                          child: Text('Edit Profile'),
-                        ),
                         const PopupMenuItem<String>(
                           value: 'logout',
                           child: Text(
@@ -186,157 +312,257 @@ class _ProfileViewState extends State<ProfileView> {
       ),
       body: Column(
         children: [
-          // Top profile info (fixed, unscrollable)
+          // Profile header
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                InkWell(
-                  onTap: isCurrentUser ? () {} : null,
-                  child: Stack(
-                    alignment: Alignment.bottomRight,
-                    children: [
-                      CircleAvatar(
-                        radius: 24,
-                        backgroundImage:
-                            (userData!.imageBase64 != null &&
-                                userData!.imageBase64!.isNotEmpty)
-                            ? MemoryImage(base64Decode(userData!.imageBase64!))
-                            : null,
-                        child:
-                            (userData!.imageBase64 == null ||
-                                userData!.imageBase64!.isEmpty)
-                            ? const Icon(Icons.person, size: 24)
-                            : null,
-                      ),
-                      if (isCurrentUser)
-                        Positioned(
-                          bottom: -1,
-                          right: 4,
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: const BoxDecoration(
-                              color: Colors.blue,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.add,
-                              color: Colors.white,
-                              size: 10,
-                            ),
+                // Row with Profile Pic + Name
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    InkWell(
+                      onTap: () =>
+                          _showProfileImageDialog(isCurrentUser: isCurrentUser),
+                      child: Stack(
+                        alignment: Alignment.bottomRight,
+                        children: [
+                          CircleAvatar(
+                            radius: 30,
+                            backgroundImage:
+                                (userData!.imageBase64 != null &&
+                                    userData!.imageBase64!.isNotEmpty)
+                                ? MemoryImage(
+                                    base64Decode(userData!.imageBase64!),
+                                  )
+                                : null,
+                            child:
+                                (userData!.imageBase64 == null ||
+                                    userData!.imageBase64!.isEmpty)
+                                ? const Icon(Icons.person, size: 30)
+                                : null,
                           ),
+                          if (isCurrentUser &&
+                              (userData!.imageBase64 == null ||
+                                  userData!.imageBase64!.isEmpty))
+                            Positioned(
+                              bottom: 1,
+                              right: 4,
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: const BoxDecoration(
+                                  color: Colors.blue,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.add,
+                                  color: Colors.white,
+                                  size: 12,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
+                        userData!.name,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
                         ),
-                    ],
-                  ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  userData!.name,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+
                 const SizedBox(height: 20),
+
+                // Stats row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    _buildStatCard("Posts", userData!.postsCount),
-                    _buildStatCard("Followers", userData!.followers),
+                    _buildStatCard("Posts", userPosts.length),
+                    ValueListenableBuilder<int>(
+                      valueListenable: followersCountNotifier,
+                      builder: (_, value, __) =>
+                          _buildStatCard("Followers", value),
+                    ),
                     _buildStatCard("Following", userData!.following),
                   ],
                 ),
+
                 const SizedBox(height: 16),
 
-                // Follow/Unfollow button
+                // Follow button (if not current user)
                 if (!isCurrentUser)
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isFollowing
-                            ? Colors.black
-                            : Colors.blue,
-                        foregroundColor: Colors.white,
-                      ),
-                      onPressed: _toggleFollow,
-                      child: Text(isFollowing ? "Unfollow" : "Follow"),
-                    ),
+                  ValueListenableBuilder<bool>(
+                    valueListenable: isFollowingNotifier,
+                    builder: (_, isFollowing, __) {
+                      return ValueListenableBuilder<bool>(
+                        valueListenable: followButtonLoadingNotifier,
+                        builder: (_, isLoading, __) {
+                          return GradientButton(
+                            text: isFollowing ? "Unfollow" : "Follow",
+                            onPressed: isLoading ? null : _toggleFollow,
+                            isLoading: isLoading,
+                          );
+                        },
+                      );
+                    },
                   ),
-                const SizedBox(height: 16),
-                const Divider(thickness: 2),
               ],
             ),
           ),
+          const Divider(
+            thickness: 2,
+            color: Colors.black87,
+            indent: 0,
+            endIndent: 0,
+          ),
 
-          // Posts list (scrollable)
+          // Posts list styled like HomeView
           Expanded(
             child: ListView.separated(
-              padding: const EdgeInsets.all(16),
               itemCount: userPosts.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 16),
+              separatorBuilder: (_, __) =>
+                  const Divider(thickness: 1, color: Colors.grey),
               itemBuilder: (context, index) {
                 final post = userPosts[index];
-                return Card(
+                final isCurrentUserPost =
+                    FirebaseAuth.instance.currentUser!.uid == post.userId;
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              post.username ?? "Unknown User",
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
+                      // Row with avatar + username
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          CircleAvatar(
+                            radius: 14,
+                            backgroundColor: Colors.grey[300],
+                            backgroundImage:
+                                (post.userProfileImage != null &&
+                                    post.userProfileImage!.isNotEmpty)
+                                ? MemoryImage(
+                                    base64Decode(post.userProfileImage!),
+                                  )
+                                : null,
+                            child:
+                                (post.userProfileImage == null ||
+                                    post.userProfileImage!.isEmpty)
+                                ? const Icon(
+                                    Icons.person,
+                                    color: Colors.white,
+                                    size: 18,
+                                  )
+                                : null,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  post.username ?? "Unknown User",
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  post.content,
+                                  textAlign: TextAlign.justify,
+                                  style: const TextStyle(fontSize: 16),
+                                ),
+                                if (post.imageUrl != null &&
+                                    post.imageUrl!.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 8.0),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.memory(
+                                        base64Decode(post.imageUrl!),
+                                        fit: BoxFit.cover,
+                                        height: 200,
+                                        width: double.infinity,
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
+                          ),
+                          if (isCurrentUserPost)
                             PopupMenuButton<String>(
-                              onSelected: (value) {
+                              onSelected: (value) async {
                                 if (value == 'delete') {
-                                  _deletePost(post.postId);
+                                  final confirm = await showDialog<bool>(
+                                    context: context,
+                                    builder: (ctx) => AlertDialog(
+                                      title: const Text("Confirm Deletion"),
+                                      content: const Text(
+                                        "Are you sure you want to delete this post?",
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.of(ctx).pop(false),
+                                          child: const Text("Cancel"),
+                                        ),
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.of(ctx).pop(true),
+                                          child: const Text(
+                                            "Delete",
+                                            style: TextStyle(color: Colors.red),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                  if (confirm == true) {
+                                    if (!mounted) return;
+                                    setState(() {
+                                      userPosts.removeAt(index);
+                                    });
+                                    _deletePost(post.postId);
+                                  }
                                 }
                               },
                               itemBuilder: (context) => [
                                 const PopupMenuItem(
                                   value: 'delete',
-                                  child: Text("Delete Post"),
+                                  child: Text(
+                                    "Delete Post",
+                                    style: TextStyle(color: Colors.red),
+                                  ),
                                 ),
                               ],
                             ),
-                          ],
-                        ),
+                        ],
                       ),
-
-                      // Content
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Text(post.content),
-                      ),
-                      if (post.imageUrl != null && post.imageUrl!.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Image.memory(
-                            base64Decode(post.imageUrl!),
-                            fit: BoxFit.cover,
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Posted on: ${formatDate(post.createdAt)}",
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
                           ),
-                        ),
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Text(
-                          "Posted on: ${post.createdAt.day.toString().padLeft(2, '0')}/"
-                          "${post.createdAt.month.toString().padLeft(2, '0')}/"
-                          "${post.createdAt.year.toString().substring(2)}",
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey,
-                          ),
-                        ),
+                          LikeButtonWidget(post: post, onToggle: _toggleLike),
+                        ],
                       ),
                     ],
                   ),

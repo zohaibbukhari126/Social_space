@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:quick_connect/widgets/like_button_widget.dart';
 import '../viewmodels/post_viewmodel.dart';
 import '../models/post.dart';
+import 'profile_view.dart';
 
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
@@ -98,7 +99,7 @@ class _HomeViewState extends State<HomeView> {
             onRefresh: _refreshPosts,
             child: ListView.separated(
               separatorBuilder: (_, __) =>
-                  const Divider(thickness: 2, color: Colors.black87),
+                  const Divider(thickness: 1, color: Colors.grey),
               itemCount: posts.length,
               itemBuilder: (context, index) {
                 final post = posts[index];
@@ -107,80 +108,113 @@ class _HomeViewState extends State<HomeView> {
                     horizontal: 12,
                     vertical: 6,
                   ),
-                  child: Row(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Profile + Username (left column)
-                      Column(
+                      // 🔄 Swapped Row here
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          CircleAvatar(
-                            radius: 14,
-                            backgroundColor: Colors.grey[300],
-                            backgroundImage: (post.userProfileImage != null &&
-                                    post.userProfileImage!.isNotEmpty)
-                                ? MemoryImage(
-                                    base64Decode(post.userProfileImage!),
-                                  )
-                                : null,
-                            child: (post.userProfileImage == null ||
-                                    post.userProfileImage!.isEmpty)
-                                ? const Icon(Icons.person, color: Colors.white, size: 18,)
-                                : null,
+                          // Avatar clickable
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      ProfileView(userId: post.userId),
+                                ),
+                              );
+                            },
+                            child: CircleAvatar(
+                              radius: 14,
+                              backgroundColor: Colors.grey[300],
+                              backgroundImage: (post.userProfileImage != null &&
+                                      post.userProfileImage!.isNotEmpty)
+                                  ? MemoryImage(
+                                      base64Decode(post.userProfileImage!))
+                                  : null,
+                              child: (post.userProfileImage == null ||
+                                      post.userProfileImage!.isEmpty)
+                                  ? const Icon(Icons.person,
+                                      color: Colors.white, size: 18)
+                                  : null,
+                            ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(width: 10),
-                      // Post content and image (right column)
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              post.username ?? "Unknown User",
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              post.content,
-                              style: const TextStyle(fontSize: 16),
-                            ),
-                            // Image preview with tap to expand
-                            if (post.imageUrl != null &&
-                                post.imageUrl!.isNotEmpty)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 8.0),
-                                child: GestureDetector(
-                                  onTap: () => showFullImage(post.imageUrl!),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Image.memory(
-                                      base64Decode(post.imageUrl!),
-                                      fit: BoxFit.cover,
-                                      height: 200,
-                                      width: double.infinity,
+
+                          const SizedBox(width: 10),
+
+                          // Username + content + image column
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Username clickable
+                                GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            ProfileView(userId: post.userId),
+                                      ),
+                                    );
+                                  },
+                                  child: Text(
+                                    post.username ?? "Unknown User",
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
                                     ),
                                   ),
                                 ),
-                              ),
-                            const SizedBox(height: 6),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
+
+                                const SizedBox(height: 8),
+
+                                // ✅ Content starts directly under username
                                 Text(
-                                  "Posted on: ${formatDate(post.createdAt)}",
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey,
-                                  ),
+                                  post.content,
+                                  textAlign: TextAlign.justify,
+                                  style: const TextStyle(fontSize: 16),
                                 ),
-                                LikeButtonWidget(post: post, onToggle: _toggleLike),
+
+                                if (post.imageUrl != null &&
+                                    post.imageUrl!.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 8.0),
+                                    child: GestureDetector(
+                                      onTap: () =>
+                                          showFullImage(post.imageUrl!),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Image.memory(
+                                          base64Decode(post.imageUrl!),
+                                          fit: BoxFit.cover,
+                                          height: 200,
+                                          width: double.infinity,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                               ],
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Posted on: ${formatDate(post.createdAt)}",
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          LikeButtonWidget(post: post, onToggle: _toggleLike),
+                        ],
                       ),
                     ],
                   ),
