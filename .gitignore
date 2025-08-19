@@ -50,3 +50,6 @@ app.*.map.json
 
 #firebase related
 android/app/google-services.json
+
+#proguard rules
+android/app/proguard-rules.pro
