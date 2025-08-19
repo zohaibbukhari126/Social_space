@@ -67,6 +67,7 @@
         flutter run
    
       Note: Android only for now.
+---
 
 ### 🛠 Tech Stack
   - Flutter – Frontend
@@ -78,8 +79,7 @@
   - SharedPreferences – Local persistence
 
   - Provider – State management
-
-
+---
 
 # Author
 - Muhammad Bilal Ahmed
