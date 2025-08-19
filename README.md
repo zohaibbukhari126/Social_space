@@ -2,7 +2,6 @@
 
 [![Flutter](https://img.shields.io/badge/Flutter-2.10-blue?logo=flutter)](https://flutter.dev/)
 [![Firebase](https://img.shields.io/badge/Firebase-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com/)
-[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 **Quick Connect** is a modern, sleek **social networking Android app** built with **Flutter** and **Firebase**. Connect with friends, share posts, follow users, and engage in real-time interactions. Designed for simplicity, speed, and an engaging experience.
 
@@ -47,45 +46,40 @@
 
 1. **Clone the Repository**
 
-git clone https://github.com/BilalWattu521/quick_connect.git
-cd quick_connect
+        git clone https://github.com/BilalWattu521/quick_connect.git
 
-2. **Install Dependencies**
+        cd quick_connect
 
-flutter pub get
+3. **Install Dependencies**
+
+        flutter pub get
 
 3. **Configure Firebase**
 
-Create a Firebase project for Android.
+      Create a Firebase project for Android.
 
-Add google-services.json to android/app/
+      Add google-services.json to android/app/
 
-Enable Email/Password Authentication and Realtime Database.
+      Enable Email/Password Authentication and Realtime Database.
 
 4. **Run the App**
 
-flutter run
-⚠️ Note: Android only for now.
+        flutter run
+   
+      Note: Android only for now.
 
 ### 🛠 Tech Stack
-- Flutter – Frontend
+  - Flutter – Frontend
 
-- Firebase Authentication – Login & Signup
+  - Firebase Authentication – Login & Signup
 
-- Firebase Realtime Database – Real-time storage
+  - Firebase Realtime Database – Real-time storage
 
-- SharedPreferences – Local persistence
+  - SharedPreferences – Local persistence
 
-- Provider – State management
+  - Provider – State management
 
-### 💡 Future Enhancements
-Push notifications for likes, comments, and follows.
 
-Image caching for faster feed performance.
-
-Support for iOS devices.
-
-Advanced UI themes and interactive animations.
 
 # Author
 - Muhammad Bilal Ahmed
