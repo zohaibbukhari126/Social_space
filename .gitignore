@@ -35,9 +35,13 @@ migrate_working_dir/
 
 # Symbolication related
 app.*.symbols
+# Ignore Flutter obfuscation debug symbols
+build/app/outputs/symbols/
+
 
 # Obfuscation related
 app.*.map.json
+
 
 # Android Studio will place build artifacts here
 /android/app/debug
