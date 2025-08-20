@@ -29,6 +29,11 @@
 - **Profile Feed**: Shows all posts by a specific user.
 - **Add New Post**: Easily create new posts from the feed.
 
+### Adaptive Theme
+- **System Default**: Enjoy your system's default theme.
+- **Dark Theme**: Enjoy Dark theme.
+- **Light Theme**: Enjoy Light theme.
+
 ---
 
 ## 📸 Screenshots
