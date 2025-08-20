@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:adaptive_theme/adaptive_theme.dart';
 import 'package:quick_connect/main_navigation.dart';
 import 'viewmodels/auth_viewmodel.dart';
 import 'viewmodels/post_viewmodel.dart';
@@ -31,12 +32,25 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
+
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Quick Connect',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: const StartupView(),
+    return AdaptiveTheme(
+      light: ThemeData(
+        primarySwatch: Colors.deepPurple,
+        brightness: Brightness.light,
+      ),
+      dark: ThemeData(
+        primarySwatch: Colors.deepPurple,
+        brightness: Brightness.dark,
+      ),
+      initial: AdaptiveThemeMode.system,
+      builder: (theme, darkTheme) => MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'Quick Connect',
+        theme: theme,
+        darkTheme: darkTheme,
+        home: const StartupView(),
+      ),
     );
   }
 }

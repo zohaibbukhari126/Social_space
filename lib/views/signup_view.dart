@@ -18,18 +18,21 @@ class _SignupViewState extends State<SignupView> {
   final _confirmPasswordController = TextEditingController();
   bool isLoading = false;
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   @override
   Widget build(BuildContext context) {
     final authVM = Provider.of<AuthViewModel>(context, listen: false);
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
           child: Card(
-            elevation: 8,
+            elevation: 15,
+            color: theme.cardColor,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
@@ -38,31 +41,34 @@ class _SignupViewState extends State<SignupView> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
+                  Text(
                     'Create Your Account',
-                    style: TextStyle(
-                      fontSize: 26,
+                    style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.deepPurple,
+                      color: theme.colorScheme.primary,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     'Join us and start connecting!',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withOpacity(0.7),
+                    ),
                   ),
                   const SizedBox(height: 25),
                   Form(
                     key: _formKey,
                     child: Column(
                       children: [
+                        // Full Name
                         TextFormField(
                           controller: _nameController,
                           decoration: InputDecoration(
                             labelText: 'Full Name',
                             prefixIcon: const Icon(Icons.person_outline),
                             filled: true,
-                            fillColor: Colors.grey[100],
+                            fillColor: theme.inputDecorationTheme.fillColor ??
+                                theme.colorScheme.surfaceVariant,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -75,13 +81,16 @@ class _SignupViewState extends State<SignupView> {
                           },
                         ),
                         const SizedBox(height: 15),
+
+                        // Email
                         TextFormField(
                           controller: _emailController,
                           decoration: InputDecoration(
                             labelText: 'Email',
                             prefixIcon: const Icon(Icons.email_outlined),
                             filled: true,
-                            fillColor: Colors.grey[100],
+                            fillColor: theme.inputDecorationTheme.fillColor ??
+                                theme.colorScheme.surfaceVariant,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -97,6 +106,8 @@ class _SignupViewState extends State<SignupView> {
                           },
                         ),
                         const SizedBox(height: 15),
+
+                        // Password
                         TextFormField(
                           controller: _passwordController,
                           obscureText: _obscurePassword,
@@ -116,7 +127,8 @@ class _SignupViewState extends State<SignupView> {
                               },
                             ),
                             filled: true,
-                            fillColor: Colors.grey[100],
+                            fillColor: theme.inputDecorationTheme.fillColor ??
+                                theme.colorScheme.surfaceVariant,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -131,26 +143,30 @@ class _SignupViewState extends State<SignupView> {
                           },
                         ),
                         const SizedBox(height: 15),
+
+                        // Confirm Password
                         TextFormField(
                           controller: _confirmPasswordController,
-                          obscureText: _obscurePassword,
+                          obscureText: _obscureConfirmPassword,
                           decoration: InputDecoration(
                             labelText: 'Confirm Password',
                             prefixIcon: const Icon(Icons.lock_outline),
                             suffixIcon: IconButton(
                               icon: Icon(
-                                _obscurePassword
+                                _obscureConfirmPassword
                                     ? Icons.visibility_off
                                     : Icons.visibility,
                               ),
                               onPressed: () {
                                 setState(() {
-                                  _obscurePassword = !_obscurePassword;
+                                  _obscureConfirmPassword =
+                                      !_obscureConfirmPassword;
                                 });
                               },
                             ),
                             filled: true,
-                            fillColor: Colors.grey[100],
+                            fillColor: theme.inputDecorationTheme.fillColor ??
+                                theme.colorScheme.surfaceVariant,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -165,6 +181,8 @@ class _SignupViewState extends State<SignupView> {
                           },
                         ),
                         const SizedBox(height: 20),
+
+                        // Sign Up Button
                         GradientButton(
                           text: 'Sign Up',
                           onPressed: () async {
@@ -205,13 +223,15 @@ class _SignupViewState extends State<SignupView> {
                           isLoading: isLoading,
                         ),
                         const SizedBox(height: 15),
+
+                        // Login Redirect
                         TextButton(
                           onPressed: () {
                             Navigator.pop(context);
                           },
-                          child: const Text(
+                          child: Text(
                             'Already have an account? Login',
-                            style: TextStyle(color: Colors.deepPurple),
+                            style: TextStyle(color: theme.colorScheme.primary),
                           ),
                         ),
                       ],

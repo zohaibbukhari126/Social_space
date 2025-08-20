@@ -1,3 +1,4 @@
+import 'package:adaptive_theme/adaptive_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../viewmodels/post_viewmodel.dart';
@@ -27,6 +28,8 @@ class _HomeViewState extends State<HomeView> {
 
   @override
   Widget build(BuildContext context) {
+    final currentMode = AdaptiveTheme.of(context).mode;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Quick Connect"),
@@ -34,6 +37,33 @@ class _HomeViewState extends State<HomeView> {
         foregroundColor: Colors.white,
         centerTitle: true,
         elevation: 0,
+        actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.wb_sunny_outlined),
+            onSelected: (value) {
+              if (value == 'light') AdaptiveTheme.of(context).setLight();
+              if (value == 'dark') AdaptiveTheme.of(context).setDark();
+              if (value == 'system') AdaptiveTheme.of(context).setSystem();
+            },
+            itemBuilder: (context) => [
+              CheckedPopupMenuItem(
+                value: 'light',
+                checked: currentMode == AdaptiveThemeMode.light,
+                child: const Text("Light Theme"),
+              ),
+              CheckedPopupMenuItem(
+                value: 'dark',
+                checked: currentMode == AdaptiveThemeMode.dark,
+                child: const Text("Dark Theme"),
+              ),
+              CheckedPopupMenuItem(
+                value: 'system',
+                checked: currentMode == AdaptiveThemeMode.system,
+                child: const Text("System Default"),
+              ),
+            ],
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -50,7 +80,7 @@ class _HomeViewState extends State<HomeView> {
                   : const SizedBox.shrink();
             },
           ),
-          
+
           // Posts list - only rebuild when posts list changes
           Expanded(
             child: Selector<PostViewModel, List<Post>>(
@@ -83,7 +113,7 @@ class _HomeViewState extends State<HomeView> {
                     itemCount: posts.length,
                     itemBuilder: (context, index) {
                       final post = posts[index];
-                      
+
                       // Each PostWidget is independent and will only rebuild
                       // when its specific post data changes
                       return PostWidget(
@@ -102,4 +132,3 @@ class _HomeViewState extends State<HomeView> {
     );
   }
 }
-

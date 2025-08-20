@@ -319,9 +319,15 @@ class _ProfileViewState extends State<ProfileView> {
                       <PopupMenuEntry<String>>[
                         const PopupMenuItem<String>(
                           value: 'logout',
-                          child: Text(
-                            'Logout',
-                            style: TextStyle(color: Colors.red),
+                          child: Row(
+                            children: [
+                              Icon(Icons.logout, color: Colors.red),
+                              SizedBox(width: 4),
+                              Text(
+                                'Logout',
+                                style: TextStyle(color: Colors.red),
+                              ),
+                            ],
                           ),
                         ),
                       ],

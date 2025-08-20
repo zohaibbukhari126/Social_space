@@ -30,7 +30,6 @@ class _LoginViewState extends State<LoginView> {
 
   void _showErrorSnackBar(String message) {
     if (!mounted) return;
-    
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -60,7 +59,6 @@ class _LoginViewState extends State<LoginView> {
 
   void _showSuccessSnackBar(String message) {
     if (!mounted) return;
-    
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -85,7 +83,6 @@ class _LoginViewState extends State<LoginView> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
-
     setState(() => isLoading = true);
 
     try {
@@ -93,7 +90,6 @@ class _LoginViewState extends State<LoginView> {
       final email = _emailController.text.trim();
       final password = _passwordController.text.trim();
 
-      // Additional client-side validation
       if (email.isEmpty || password.isEmpty) {
         _showErrorSnackBar('Please fill in all fields');
         return;
@@ -104,29 +100,19 @@ class _LoginViewState extends State<LoginView> {
       if (!mounted) return;
 
       if (error == null) {
-        // Success - show success message and navigate
         _showSuccessSnackBar('Login successful!');
-        
-        // Small delay to show success message
         await Future.delayed(const Duration(milliseconds: 500));
-        
         if (mounted) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(
-              builder: (_) => const MainNavigation(),
-            ),
+            MaterialPageRoute(builder: (_) => const MainNavigation()),
           );
         }
       } else {
-        // Show error message
         _showErrorSnackBar(error);
       }
     } catch (e) {
       if (!mounted) return;
-      
-      // Handle any unexpected errors
-      debugPrint('Unexpected login error: $e');
       _showErrorSnackBar('An unexpected error occurred. Please try again.');
     } finally {
       if (mounted) {
@@ -137,13 +123,20 @@ class _LoginViewState extends State<LoginView> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cardColor = theme.cardColor;
+    final inputFill = theme.inputDecorationTheme.fillColor ?? theme.colorScheme.surfaceVariant;
+    final textColor = theme.textTheme.bodyMedium?.color;
+    final primaryColor = theme.colorScheme.primary;
+
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
           child: Card(
-            elevation: 8,
+            color: cardColor,
+            elevation: 15,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
@@ -152,19 +145,20 @@ class _LoginViewState extends State<LoginView> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
+                  Text(
                     'Welcome Back to Quick Connect!',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 26,
+                    style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.deepPurple,
+                      color: primaryColor,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     'Login to continue',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.hintColor,
+                    ),
                   ),
                   const SizedBox(height: 25),
                   Form(
@@ -180,18 +174,15 @@ class _LoginViewState extends State<LoginView> {
                             labelText: 'Email',
                             prefixIcon: const Icon(Icons.email_outlined),
                             filled: true,
-                            fillColor: Colors.grey[100],
+                            fillColor: inputFill,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            errorMaxLines: 2,
                           ),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
                               return 'Please enter your email';
-                            } else if (!RegExp(
-                              r'^[^@]+@[^@]+\.[^@]+',
-                            ).hasMatch(value.trim())) {
+                            } else if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value.trim())) {
                               return 'Please enter a valid email address';
                             }
                             return null;
@@ -209,9 +200,7 @@ class _LoginViewState extends State<LoginView> {
                             prefixIcon: const Icon(Icons.lock_outline),
                             suffixIcon: IconButton(
                               icon: Icon(
-                                _obscurePassword
-                                    ? Icons.visibility_off
-                                    : Icons.visibility,
+                                _obscurePassword ? Icons.visibility_off : Icons.visibility,
                               ),
                               onPressed: isLoading ? null : () {
                                 setState(() {
@@ -220,11 +209,10 @@ class _LoginViewState extends State<LoginView> {
                               },
                             ),
                             filled: true,
-                            fillColor: Colors.grey[100],
+                            fillColor: inputFill,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            errorMaxLines: 2,
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
@@ -240,10 +228,10 @@ class _LoginViewState extends State<LoginView> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             CheckboxListTile(
-                              title: const Text('Remember me'),
-                              subtitle: const Text(
+                              title: Text('Remember me', style: TextStyle(color: textColor)),
+                              subtitle: Text(
                                 'Keep me logged in on this device',
-                                style: TextStyle(fontSize: 12, color: Colors.grey),
+                                style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor),
                               ),
                               value: rememberMe,
                               onChanged: isLoading ? null : (value) {
@@ -251,7 +239,7 @@ class _LoginViewState extends State<LoginView> {
                                   rememberMe = value ?? false;
                                 });
                               },
-                              contentPadding: const EdgeInsets.all(0),
+                              contentPadding: EdgeInsets.zero,
                               controlAffinity: ListTileControlAffinity.leading,
                             ),
                             Align(
@@ -260,14 +248,12 @@ class _LoginViewState extends State<LoginView> {
                                 onPressed: isLoading ? null : () {
                                   Navigator.push(
                                     context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const ForgotPasswordView(),
-                                    ),
+                                    MaterialPageRoute(builder: (_) => const ForgotPasswordView()),
                                   );
                                 },
-                                child: const Text(
+                                child: Text(
                                   'Forgot Password?',
-                                  style: TextStyle(color: Colors.deepPurple),
+                                  style: TextStyle(color: primaryColor),
                                 ),
                               ),
                             ),
@@ -284,14 +270,12 @@ class _LoginViewState extends State<LoginView> {
                           onPressed: isLoading ? null : () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(
-                                builder: (_) => const SignupView(),
-                              ),
+                              MaterialPageRoute(builder: (_) => const SignupView()),
                             );
                           },
-                          child: const Text(
+                          child: Text(
                             'Don\'t have an account? Sign up',
-                            style: TextStyle(color: Colors.deepPurple),
+                            style: TextStyle(color: primaryColor),
                           ),
                         ),
                       ],
@@ -306,4 +290,3 @@ class _LoginViewState extends State<LoginView> {
     );
   }
 }
-
