@@ -19,12 +19,124 @@ class _LoginViewState extends State<LoginView> {
   final _passwordController = TextEditingController();
   bool rememberMe = false;
   bool isLoading = false;
-  bool _obscurePassword = true; // password visibility toggle
+  bool _obscurePassword = true;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  void _showErrorSnackBar(String message) {
+    if (!mounted) return;
+    
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.red[600],
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: 'Dismiss',
+          textColor: Colors.white,
+          onPressed: () {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          },
+        ),
+      ),
+    );
+  }
+
+  void _showSuccessSnackBar(String message) {
+    if (!mounted) return;
+    
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_outline, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.green[600],
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Future<void> _handleLogin() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    try {
+      final authVM = context.read<AuthViewModel>();
+      final email = _emailController.text.trim();
+      final password = _passwordController.text.trim();
+
+      // Additional client-side validation
+      if (email.isEmpty || password.isEmpty) {
+        _showErrorSnackBar('Please fill in all fields');
+        return;
+      }
+
+      final error = await authVM.login(email, password, rememberMe);
+
+      if (!mounted) return;
+
+      if (error == null) {
+        // Success - show success message and navigate
+        _showSuccessSnackBar('Login successful!');
+        
+        // Small delay to show success message
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const MainNavigation(),
+            ),
+          );
+        }
+      } else {
+        // Show error message
+        _showErrorSnackBar(error);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      
+      // Handle any unexpected errors
+      debugPrint('Unexpected login error: $e');
+      _showErrorSnackBar('An unexpected error occurred. Please try again.');
+    } finally {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final authVM = context.read<AuthViewModel>();
-
     return Scaffold(
       backgroundColor: Colors.grey[100],
       body: Center(
@@ -61,6 +173,9 @@ class _LoginViewState extends State<LoginView> {
                       children: [
                         TextFormField(
                           controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.next,
+                          enabled: !isLoading,
                           decoration: InputDecoration(
                             labelText: 'Email',
                             prefixIcon: const Icon(Icons.email_outlined),
@@ -69,13 +184,14 @@ class _LoginViewState extends State<LoginView> {
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
+                            errorMaxLines: 2,
                           ),
                           validator: (value) {
-                            if (value == null || value.isEmpty) {
+                            if (value == null || value.trim().isEmpty) {
                               return 'Please enter your email';
                             } else if (!RegExp(
                               r'^[^@]+@[^@]+\.[^@]+',
-                            ).hasMatch(value)) {
+                            ).hasMatch(value.trim())) {
                               return 'Please enter a valid email address';
                             }
                             return null;
@@ -85,6 +201,9 @@ class _LoginViewState extends State<LoginView> {
                         TextFormField(
                           controller: _passwordController,
                           obscureText: _obscurePassword,
+                          textInputAction: TextInputAction.done,
+                          enabled: !isLoading,
+                          onFieldSubmitted: (_) => _handleLogin(),
                           decoration: InputDecoration(
                             labelText: 'Password',
                             prefixIcon: const Icon(Icons.lock_outline),
@@ -94,7 +213,7 @@ class _LoginViewState extends State<LoginView> {
                                     ? Icons.visibility_off
                                     : Icons.visibility,
                               ),
-                              onPressed: () {
+                              onPressed: isLoading ? null : () {
                                 setState(() {
                                   _obscurePassword = !_obscurePassword;
                                 });
@@ -105,6 +224,7 @@ class _LoginViewState extends State<LoginView> {
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
+                            errorMaxLines: 2,
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
@@ -121,8 +241,12 @@ class _LoginViewState extends State<LoginView> {
                           children: [
                             CheckboxListTile(
                               title: const Text('Remember me'),
+                              subtitle: const Text(
+                                'Keep me logged in on this device',
+                                style: TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
                               value: rememberMe,
-                              onChanged: (value) {
+                              onChanged: isLoading ? null : (value) {
                                 setState(() {
                                   rememberMe = value ?? false;
                                 });
@@ -133,12 +257,11 @@ class _LoginViewState extends State<LoginView> {
                             Align(
                               alignment: Alignment.centerRight,
                               child: TextButton(
-                                onPressed: () {
+                                onPressed: isLoading ? null : () {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (_) =>
-                                          const ForgotPasswordView(),
+                                      builder: (_) => const ForgotPasswordView(),
                                     ),
                                   );
                                 },
@@ -150,57 +273,15 @@ class _LoginViewState extends State<LoginView> {
                             ),
                           ],
                         ),
-
                         const SizedBox(height: 20),
                         GradientButton(
                           text: isLoading ? 'Logging in...' : 'Login',
-                          onPressed: isLoading
-                              ? null
-                              : () async {
-                                  if (_formKey.currentState!.validate()) {
-                                    setState(() => isLoading = true);
-                                    try {
-                                      final email = _emailController.text.trim();
-                                      final password = _passwordController.text.trim();
-                                      final success = await authVM.login(
-                                        email,
-                                        password,
-                                        rememberMe,
-                                      );
-                                      if (success != null) {
-                                        Navigator.pushReplacement(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) =>
-                                                const MainNavigation(),
-                                          ),
-                                        );
-                                      } else {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          const SnackBar(
-                                            content: Text(
-                                                'Login failed. Please try again.'),
-                                          ),
-                                        );
-                                      }
-                                    } catch (e) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(content: Text("Error: $e")),
-                                      );
-                                    } finally {
-                                      if (mounted) {
-                                        setState(() => isLoading = false);
-                                      }
-                                    }
-                                  }
-                                },
+                          onPressed: isLoading ? null : _handleLogin,
                           isLoading: isLoading,
                         ),
                         const SizedBox(height: 15),
                         TextButton(
-                          onPressed: () {
+                          onPressed: isLoading ? null : () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -225,3 +306,4 @@ class _LoginViewState extends State<LoginView> {
     );
   }
 }
+

@@ -35,12 +35,11 @@ class _NewPostViewState extends State<NewPostView> {
 
     try {
       final post = await context.read<PostViewModel>().addPost(
-        _contentController.text.trim(),
-        imageFile: _selectedImage,
-      );
+            _contentController.text.trim(),
+            imageFile: _selectedImage,
+          );
 
       if (mounted && post != null) {
-        // Pop back to HomeView and pass the new post
         Navigator.pop(context, post);
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -105,7 +104,7 @@ class _NewPostViewState extends State<NewPostView> {
                     ),
               const SizedBox(height: 20),
               GradientButton(
-                text: "Post", 
+                text: "Post",
                 onPressed: _submitPost,
                 isLoading: _isLoading,
               ),

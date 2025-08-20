@@ -5,11 +5,11 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:quick_connect/viewmodels/post_viewmodel.dart';
-import 'package:quick_connect/widgets/like_button_widget.dart';
 import 'dart:io';
 import '../viewmodels/auth_viewmodel.dart';
 import '../models/post.dart';
 import '../models/user.dart';
+import '../widgets/post_widget.dart';
 import 'login_view.dart';
 import '../widgets/gradient_button.dart';
 
@@ -25,8 +25,8 @@ class ProfileView extends StatefulWidget {
 class _ProfileViewState extends State<ProfileView> {
   AppUser? userData;
   bool isLoading = true;
-  List<Post> userPosts = [];
   late AuthViewModel authVM;
+  late PostViewModel postVM;
 
   // ValueNotifiers for counts and follow status
   late ValueNotifier<int> followersCountNotifier;
@@ -40,6 +40,7 @@ class _ProfileViewState extends State<ProfileView> {
   void initState() {
     super.initState();
     authVM = context.read<AuthViewModel>();
+    postVM = context.read<PostViewModel>();
     followersCountNotifier = ValueNotifier(0);
     isFollowingNotifier = ValueNotifier(false);
     followButtonLoadingNotifier = ValueNotifier(false);
@@ -96,36 +97,9 @@ class _ProfileViewState extends State<ProfileView> {
         followingCount = followingMap.length;
       }
 
-      // fetch user's posts
-      DataSnapshot postsSnap = await FirebaseDatabase.instance
-          .ref("posts")
-          .orderByChild("userId")
-          .equalTo(profileUid)
-          .get();
-      if (!mounted) return;
-
-      List<Post> posts = [];
-      if (postsSnap.exists) {
-        final data = Map<String, dynamic>.from(postsSnap.value as Map);
-        data.forEach((key, value) {
-          Map<String, dynamic> postMap = Map<String, dynamic>.from(value);
-          posts.add(
-            Post.fromMap(
-              postMap,
-              key,
-              currentUserId: currentUserId,
-              username: user.username,
-              userProfileImage: user.imageBase64,
-            ),
-          );
-        });
-        posts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      }
-
       if (!mounted) return;
       setState(() {
         userData = user;
-        userPosts = posts;
         isLoading = false;
       });
 
@@ -139,6 +113,11 @@ class _ProfileViewState extends State<ProfileView> {
     }
   }
 
+  // Get user posts from global PostViewModel instead of local state
+  List<Post> get userPosts {
+    return postVM.allPosts.where((post) => post.userId == profileUid).toList();
+  }
+
   Future<void> _pickAndUploadImage() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
@@ -146,24 +125,72 @@ class _ProfileViewState extends State<ProfileView> {
 
     final imageFile = File(pickedFile.path);
 
-    // Immediately update UI
+    // Convert to base64
     final bytes = await imageFile.readAsBytes();
+    final newImageBase64 = base64Encode(bytes);
+
+    // Update local UI immediately (profile header only)
     if (!mounted) return;
     setState(() {
-      userData!.imageBase64 = base64Encode(bytes);
+      userData!.imageBase64 = newImageBase64;
     });
 
     try {
-      await authVM.updateProfileImage(imageFile, imageFile);
+      // Update profile image through AuthViewModel
+      final error = await authVM.updateProfileImage(imageFile);
+      
+      if (error != null) {
+        throw Exception(error);
+      }
+
+      // Update the profile image in all posts globally through PostViewModel
+      await postVM.updateUserProfileImageInPosts(
+        FirebaseAuth.instance.currentUser!.uid, 
+        newImageBase64
+      );
+
+      // Update base64 string in Realtime Database
+      await FirebaseDatabase.instance
+          .ref()
+          .child("users")
+          .child(FirebaseAuth.instance.currentUser!.uid)
+          .update({"imageBase64": newImageBase64});
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Profile photo uploaded successfully!")),
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 8),
+              Text("✅ Profile photo updated everywhere!"),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Failed to upload photo: $e")));
+      
+      // Revert local changes if upload failed
+      setState(() {
+        _fetchProfileData(); // Refresh to get the correct data
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(child: Text("❌ Failed to upload photo: $e")),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -241,23 +268,15 @@ class _ProfileViewState extends State<ProfileView> {
     }
   }
 
-  Future<void> _deletePost(String postId) async {
-    await FirebaseDatabase.instance.ref("posts/$postId").remove();
-    if (!mounted) return;
-    setState(() {
-      userPosts.removeWhere((p) => p.postId == postId);
-      userData!.postsCount--;
-    });
-  }
-
-  String formatDate(DateTime date) {
-    return "${date.day.toString().padLeft(2, '0')}/"
-        "${date.month.toString().padLeft(2, '0')}/"
-        "${date.year.toString().substring(2)}";
-  }
-
-  Future<void> _toggleLike(Post post) async {
-    await context.read<PostViewModel>().toggleLike(post);
+  // Handle post deletion - no need for local state management
+  void _handlePostDelete(String postId) {
+    // PostViewModel already handles the deletion globally
+    // Just update the post count in userData if needed
+    if (userData != null) {
+      setState(() {
+        userData!.postsCount = (userData!.postsCount > 0) ? userData!.postsCount - 1 : 0;
+      });
+    }
   }
 
   void _logout(AuthViewModel authVM) async {
@@ -380,11 +399,17 @@ class _ProfileViewState extends State<ProfileView> {
 
                 const SizedBox(height: 20),
 
-                // Stats row
+                // Stats row - use Selector to get real-time post count
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    _buildStatCard("Posts", userPosts.length),
+                    Selector<PostViewModel, int>(
+                      selector: (context, postVM) => postVM.allPosts
+                          .where((post) => post.userId == profileUid)
+                          .length,
+                      builder: (context, postCount, child) =>
+                          _buildStatCard("Posts", postCount),
+                    ),
                     ValueListenableBuilder<int>(
                       valueListenable: followersCountNotifier,
                       builder: (_, value, __) =>
@@ -423,149 +448,37 @@ class _ProfileViewState extends State<ProfileView> {
             endIndent: 0,
           ),
 
-          // Posts list styled like HomeView
+          // Posts list using Selector to get posts from global PostViewModel
           Expanded(
-            child: ListView.separated(
-              itemCount: userPosts.length,
-              separatorBuilder: (_, __) =>
-                  const Divider(thickness: 1, color: Colors.grey),
-              itemBuilder: (context, index) {
-                final post = userPosts[index];
-                final isCurrentUserPost =
-                    FirebaseAuth.instance.currentUser!.uid == post.userId;
+            child: Selector<PostViewModel, List<Post>>(
+              selector: (context, postVM) => postVM.allPosts
+                  .where((post) => post.userId == profileUid)
+                  .toList(),
+              builder: (context, userPosts, child) {
+                if (userPosts.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      "No posts yet",
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                    ),
+                  );
+                }
 
-                return Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Row with avatar + username
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          CircleAvatar(
-                            radius: 14,
-                            backgroundColor: Colors.grey[300],
-                            backgroundImage:
-                                (post.userProfileImage != null &&
-                                    post.userProfileImage!.isNotEmpty)
-                                ? MemoryImage(
-                                    base64Decode(post.userProfileImage!),
-                                  )
-                                : null,
-                            child:
-                                (post.userProfileImage == null ||
-                                    post.userProfileImage!.isEmpty)
-                                ? const Icon(
-                                    Icons.person,
-                                    color: Colors.white,
-                                    size: 18,
-                                  )
-                                : null,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  post.username ?? "Unknown User",
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  post.content,
-                                  textAlign: TextAlign.justify,
-                                  style: const TextStyle(fontSize: 16),
-                                ),
-                                if (post.imageUrl != null &&
-                                    post.imageUrl!.isNotEmpty)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 8.0),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(8),
-                                      child: Image.memory(
-                                        base64Decode(post.imageUrl!),
-                                        fit: BoxFit.cover,
-                                        height: 200,
-                                        width: double.infinity,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                          if (isCurrentUserPost)
-                            PopupMenuButton<String>(
-                              onSelected: (value) async {
-                                if (value == 'delete') {
-                                  final confirm = await showDialog<bool>(
-                                    context: context,
-                                    builder: (ctx) => AlertDialog(
-                                      title: const Text("Confirm Deletion"),
-                                      content: const Text(
-                                        "Are you sure you want to delete this post?",
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.of(ctx).pop(false),
-                                          child: const Text("Cancel"),
-                                        ),
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.of(ctx).pop(true),
-                                          child: const Text(
-                                            "Delete",
-                                            style: TextStyle(color: Colors.red),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                  if (confirm == true) {
-                                    if (!mounted) return;
-                                    setState(() {
-                                      userPosts.removeAt(index);
-                                    });
-                                    _deletePost(post.postId);
-                                  }
-                                }
-                              },
-                              itemBuilder: (context) => [
-                                const PopupMenuItem(
-                                  value: 'delete',
-                                  child: Text(
-                                    "Delete Post",
-                                    style: TextStyle(color: Colors.red),
-                                  ),
-                                ),
-                              ],
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            "Posted on: ${formatDate(post.createdAt)}",
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
-                          ),
-                          LikeButtonWidget(post: post, onToggle: _toggleLike),
-                        ],
-                      ),
-                    ],
-                  ),
+                return ListView.separated(
+                  itemCount: userPosts.length,
+                  separatorBuilder: (_, __) =>
+                      const Divider(thickness: 1, color: Colors.grey),
+                  itemBuilder: (context, index) {
+                    final post = userPosts[index];
+
+                    return PostWidget(
+                      key: ValueKey(post.postId),
+                      post: post,
+                      onRefresh: _fetchProfileData,
+                      showDeleteOption: true, // Enable delete option in ProfileView
+                      onDelete: _handlePostDelete, // Handle local state update
+                    );
+                  },
                 );
               },
             ),
@@ -579,11 +492,21 @@ class _ProfileViewState extends State<ProfileView> {
     return Column(
       children: [
         Text(
-          "$count",
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          count.toString(),
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        Text(label),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            color: Colors.grey,
+          ),
+        ),
       ],
     );
   }
 }
+

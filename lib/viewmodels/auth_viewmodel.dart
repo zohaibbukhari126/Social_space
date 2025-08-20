@@ -12,53 +12,120 @@ class AuthViewModel extends ChangeNotifier {
 
   User? get currentUser => _auth.currentUser;
 
-  // Check if user is remembered (checkbox state only)
-  Future<bool> checkRememberedUser() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    bool remember = prefs.getBool('rememberMe') ?? false;
-    // User is remembered if checkbox is true and Firebase session exists
-    return remember && _auth.currentUser != null;
-  }
+  // Firebase auth state stream
+  Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  // Save Remember Me preference
-  Future<void> setRememberMe(bool value) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('rememberMe', value);
-  }
-
-  // Get Remember Me preference
-  Future<bool> getRememberMe() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getBool('rememberMe') ?? false;
-  }
-
-  // Login
-  Future<String?> login(String email, String password, bool rememberMe) async {
+  // Remember Me
+  Future<void> _setRememberMePreference(bool value) async {
     try {
-      await _auth.signInWithEmailAndPassword(email: email, password: password);
-      await setRememberMe(rememberMe);
-      return null;
-    } on FirebaseAuthException catch (e) {
-      return e.message;
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('rememberMe', value);
+    } catch (e) {
+      debugPrint("Error saving RememberMe preference: $e");
     }
   }
 
-  // Signup
+  Future<bool> _getRememberMePreference() async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      return prefs.getBool('rememberMe') ?? false;
+    } catch (e) {
+      debugPrint("Error fetching RememberMe preference: $e");
+      return false;
+    }
+  }
+
+  // Ensure session rules (call this in main.dart before showing Home/Login)
+  Future<void> checkRememberMeOnStart() async {
+    try {
+      bool rememberMe = await _getRememberMePreference();
+      if (!rememberMe && currentUser != null) {
+        // If user is logged in but 'rememberMe' was false, log them out.
+        // This handles cases where user explicitly chose NOT to be remembered.
+        await logout();
+      } else if (rememberMe && currentUser == null) {
+        // If 'rememberMe' was true but no user is logged in (e.g., token expired),
+        // clear the preference. This might happen if Firebase token expires
+        // and auto-login fails, but the preference is still true.
+        await _setRememberMePreference(false);
+      }
+    } catch (e) {
+      debugPrint("Error in checkRememberMeOnStart: $e");
+      // If there's an error, clear the preference to be safe
+      await _setRememberMePreference(false);
+    }
+  }
+
+  // Login with enhanced error handling
+  Future<String?> login(String email, String password, bool rememberMe) async {
+    try {
+      // Validate inputs
+      if (email.trim().isEmpty || password.trim().isEmpty) {
+        return "Email and password cannot be empty";
+      }
+
+      // Attempt login
+      await _auth.signInWithEmailAndPassword(
+        email: email.trim(), 
+        password: password
+      );
+      
+      // Save user's choice only after successful login
+      await _setRememberMePreference(rememberMe);
+      return null; // success
+    } on FirebaseAuthException catch (e) {
+      debugPrint("FirebaseAuthException: ${e.code} - ${e.message}");
+      
+      switch (e.code) {
+        case 'user-not-found':
+          return "No user found with this email address";
+        case 'wrong-password':
+          return "Incorrect password";
+        case 'invalid-email':
+          return "Invalid email address format";
+        case 'user-disabled':
+          return "This account has been disabled";
+        case 'too-many-requests':
+          return "Too many failed attempts. Please try again later";
+        case 'network-request-failed':
+          return "No internet connection. Please try again";
+        case 'invalid-credential':
+          return "Invalid email or password. Please check your credentials";
+        default:
+          return e.message ?? "Authentication failed";
+      }
+    } on SocketException {
+      return "No internet connection. Please try again";
+    } catch (e) {
+      debugPrint("Unexpected login error: $e");
+      return "Unexpected error occurred. Please try again";
+    }
+  }
+
+  // Signup with enhanced error handling
   Future<String?> signup(String name, String email, String password) async {
     try {
+      // Validate inputs
+      if (name.trim().isEmpty || email.trim().isEmpty || password.trim().isEmpty) {
+        return "All fields are required";
+      }
+
+      if (password.length < 6) {
+        return "Password must be at least 6 characters long";
+      }
+
       UserCredential cred = await _auth.createUserWithEmailAndPassword(
-        email: email,
+        email: email.trim(),
         password: password,
       );
 
-      await cred.user!.updateDisplayName(name);
-
+      await cred.user!.updateDisplayName(name.trim());
       String username = email.split('@')[0];
 
       AppUser appUser = AppUser(
         uid: cred.user!.uid,
-        name: name,
-        email: email,
+        name: name.trim(),
+        email: email.trim(),
         username: username,
         imageBase64: "",
         followers: 0,
@@ -69,72 +136,169 @@ class AuthViewModel extends ChangeNotifier {
       await _db.child("users").child(cred.user!.uid).set(appUser.toMap());
       return null;
     } on FirebaseAuthException catch (e) {
-      return e.message;
+      debugPrint("FirebaseAuthException during signup: ${e.code} - ${e.message}");
+      
+      switch (e.code) {
+        case 'email-already-in-use':
+          return "An account already exists with this email";
+        case 'invalid-email':
+          return "Invalid email address format";
+        case 'weak-password':
+          return "Password is too weak. Please choose a stronger password";
+        case 'network-request-failed':
+          return "No internet connection. Please try again";
+        default:
+          return e.message ?? "Signup failed";
+      }
+    } on SocketException {
+      return "No internet connection. Please try again";
+    } catch (e) {
+      debugPrint("Unexpected signup error: $e");
+      return "Unexpected error occurred. Please try again";
     }
   }
 
-  // Upload/Update profile image (Base64 in RTDB)
-  Future<void> updateProfileImage(File imageFile, File file) async {
-    if (currentUser == null) return;
+  // Enhanced profile image update with global notification
+  Future<String?> updateProfileImage(File imageFile) async {
+    try {
+      if (currentUser == null) return "User not logged in";
 
-    // Convert image to Base64 string
-    List<int> imageBytes = await imageFile.readAsBytes();
-    String base64Image = base64Encode(imageBytes);
+      List<int> imageBytes = await imageFile.readAsBytes();
+      String base64Image = base64Encode(imageBytes);
 
-    await _db.child("users").child(currentUser!.uid).update({
-      "imageBase64": base64Image,
-    });
+      // Update user profile in database
+      await _db.child("users").child(currentUser!.uid).update({
+        "imageBase64": base64Image,
+      });
 
-    notifyListeners();
+      // Notify all listeners that profile image has been updated
+      // This will trigger rebuilds in any widget listening to AuthViewModel
+      notifyListeners();
+      
+      return null;
+    } on SocketException {
+      return "No internet connection. Please try again";
+    } catch (e) {
+      debugPrint("Error updating profile image: $e");
+      return "Failed to update image. Please try again";
+    }
+  }
+
+  // Method to get current user's profile image
+  Future<String?> getCurrentUserProfileImage() async {
+    try {
+      if (currentUser == null) return null;
+      
+      DataSnapshot snapshot = await _db.child("users").child(currentUser!.uid).get();
+      if (snapshot.exists && snapshot.value is Map) {
+        final userData = Map<String, dynamic>.from(snapshot.value as Map);
+        return userData['imageBase64'] as String?;
+      }
+    } catch (e) {
+      debugPrint("Error fetching current user profile image: $e");
+    }
+    return null;
   }
 
   // Fetch user posts
   Future<List<Map<String, dynamic>>> getUserPosts(String uid) async {
-    DataSnapshot snapshot = await _db
-        .child("posts")
-        .orderByChild("userId")
-        .equalTo(uid)
-        .get();
+    try {
+      DataSnapshot snapshot = await _db
+          .child("posts")
+          .orderByChild("userId")
+          .equalTo(uid)
+          .get();
 
-    if (snapshot.exists) {
-      final data = Map<String, dynamic>.from(snapshot.value as Map);
-      return data.values
-          .map((e) => Map<String, dynamic>.from(e as Map))
-          .toList();
+      if (snapshot.exists && snapshot.value is Map) {
+        final data = Map<String, dynamic>.from(snapshot.value as Map);
+        return data.values
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+      }
+    } catch (e) {
+      debugPrint("Error fetching user posts: $e");
     }
     return [];
   }
 
   // Get current user details
   Future<AppUser?> getCurrentUserDetails() async {
-    if (currentUser == null) return null;
-    DataSnapshot snapshot = await _db
-        .child("users")
-        .child(currentUser!.uid)
-        .get();
-    if (snapshot.exists) {
-      return AppUser.fromMap(
-        Map<String, dynamic>.from(snapshot.value as Map),
-        currentUser!.uid,
-      );
+    try {
+      if (currentUser == null) return null;
+      DataSnapshot snapshot =
+          await _db.child("users").child(currentUser!.uid).get();
+      if (snapshot.exists && snapshot.value is Map) {
+        return AppUser.fromMap(
+          Map<String, dynamic>.from(snapshot.value as Map),
+          currentUser!.uid,
+        );
+      }
+    } catch (e) {
+      debugPrint("Error fetching user details: $e");
     }
     return null;
   }
 
-  // Forgot Password
+  // Forgot Password with enhanced error handling
   Future<String?> sendPasswordReset(String email) async {
     try {
-      await _auth.sendPasswordResetEmail(email: email);
+      if (email.trim().isEmpty) {
+        return "Email address is required";
+      }
+
+      await _auth.sendPasswordResetEmail(email: email.trim());
       return null;
     } on FirebaseAuthException catch (e) {
-      return e.message;
+      debugPrint("FirebaseAuthException during password reset: ${e.code} - ${e.message}");
+      
+      switch (e.code) {
+        case 'user-not-found':
+          return "No user found with this email address";
+        case 'invalid-email':
+          return "Invalid email address format";
+        case 'network-request-failed':
+          return "No internet connection. Please try again";
+        default:
+          return e.message ?? "Password reset failed";
+      }
+    } on SocketException {
+      return "No internet connection. Please try again";
+    } catch (e) {
+      debugPrint("Unexpected password reset error: $e");
+      return "Unexpected error occurred. Please try again";
     }
   }
 
-  // Logout
+  // Logout with enhanced error handling
   Future<void> logout() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('rememberMe', false);
-    await _auth.signOut();
+    try {
+      // When logging out, always set rememberMe to false
+      await _setRememberMePreference(false);
+      await _auth.signOut();
+    } catch (e) {
+      debugPrint("Error logging out: $e");
+      // Even if there's an error, try to clear the preference
+      try {
+        await _setRememberMePreference(false);
+      } catch (prefError) {
+        debugPrint("Error clearing remember me preference: $prefError");
+      }
+    }
+  }
+
+  // Helper method to check if user is properly authenticated
+  Future<bool> isUserAuthenticated() async {
+    try {
+      User? user = currentUser;
+      if (user == null) return false;
+      
+      // Try to refresh the token to ensure it's still valid
+      await user.getIdToken(true);
+      return true;
+    } catch (e) {
+      debugPrint("User authentication check failed: $e");
+      return false;
+    }
   }
 }
+

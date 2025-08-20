@@ -30,7 +30,9 @@ class _SignupViewState extends State<SignupView> {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
           child: Card(
             elevation: 8,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(25),
               child: Column(
@@ -87,7 +89,8 @@ class _SignupViewState extends State<SignupView> {
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return 'Please enter your email';
-                            } else if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                            } else if (!RegExp(r'^[^@]+@[^@]+\.[^@]+')
+                                .hasMatch(value)) {
                               return 'Please enter a valid email address';
                             }
                             return null;
@@ -156,7 +159,7 @@ class _SignupViewState extends State<SignupView> {
                             if (value == null || value.isEmpty) {
                               return 'Please confirm your password';
                             } else if (value != _passwordController.text) {
-                              return 'Password must be the same';
+                              return 'Passwords must match';
                             }
                             return null;
                           },
@@ -175,7 +178,6 @@ class _SignupViewState extends State<SignupView> {
                                 );
 
                                 if (!mounted) return;
-
                                 setState(() => isLoading = false);
 
                                 if (error != null) {
@@ -186,7 +188,8 @@ class _SignupViewState extends State<SignupView> {
                                   Navigator.pop(context);
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
-                                      content: Text('Account created successfully!'),
+                                      content: Text(
+                                          'Account created successfully!'),
                                     ),
                                   );
                                 }

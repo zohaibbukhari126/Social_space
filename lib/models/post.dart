@@ -10,7 +10,7 @@ class Post {
 
   // Extra profile info for display
   final String? username;
-  final String? userProfileImage; // Base64 string for profile image
+  String? userProfileImage; // Base64 string for profile image
 
   Post({
     required this.postId,
