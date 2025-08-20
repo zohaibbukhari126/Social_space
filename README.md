@@ -38,16 +38,9 @@
 
 ## 📸 Screenshots
 
-
-![Login Screen](screenshots/login.jpg)
-![Signup Screen](screenshots/signup.jpg)
-![Password Reset](screenshots/forgot_password.jpg)
-![Home Feed](screenshots/home.jpg)
-![My Profile](screenshots/profile.jpg)
-![Create Post](screenshots/new_post.jpg)
-![Delete Post](screenshots/delete_post.jpg)
-![Update Profile Pic](screenshots/update_profile_pic.jpg)
-![Other User Profile](screenshots/other_user_profile.jpg)
+| Login | Signup | Password Reset | Home | My Profile | New Post | Delete Post | Update Profile Pic | Other User Profile |
+|-------|--------|----------------|------|------------|----------|-------------|--------------------|--------------------|
+| ![Login Screen](screenshots/login.jpg) | ![Signup Screen](screenshots/signup.jpg) | ![Password Reset](screenshots/forgot_password.jpg) | ![Home Feed](screenshots/home.jpg) | ![My Profile](screenshots/profile.jpg) | ![Create Post](screenshots/new_post.jpg) | ![Delete Post](screenshots/delete_post.jpg) | ![Update Profile Pic](screenshots/update_profile_pic.jpg) | ![Other User Profile](screenshots/other_user_profile.jpg) |
 
 ---
 
