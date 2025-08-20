@@ -39,11 +39,15 @@
 ## 📸 Screenshots
 
 
-![Login Screen](screenshots/login.png)
-![Signup Screen](screenshots/signup.png)
-![Home Feed](screenshots/home.png)
-![Profile Page](screenshots/profile.png)
-![Create Post](screenshots/add_post.png)
+![Login Screen](screenshots/login.jpg)
+![Signup Screen](screenshots/signup.jpg)
+![Password Reset](screenshots/forgot_password.jpg)
+![Home Feed](screenshots/home.jpg)
+![My Profile](screenshots/profile.jpg)
+![Create Post](screenshots/new_post.jpg)
+![Delete Post](screenshots/delete_post.jpg)
+![Update Profile Pic](screenshots/update_profile_pic.jpg)
+![Other User Profile](screenshots/other_user_profile.jpg)
 
 ---
 
