@@ -1,16 +1,16 @@
-// lib/models/post.dart
+
+// This class represents a social media post
 class Post {
   final String postId;
   final String userId;
   final String content;
-  final String? imageUrl; // Base64 string for post image
+  final String? imageUrl;
   final DateTime createdAt;
   List<String> likes;
-  bool isLiked; // computed based on current user
+  bool isLiked;
 
-  // Extra profile info for display
-  final String? username;
-  String? userProfileImage; // Base64 string for profile image
+  final String? username; // This field is intended to store the user's display name
+  String? userProfileImage; // This field is intended to store the user's profile image URL or Base64 string
 
   Post({
     required this.postId,
@@ -51,7 +51,9 @@ class Post {
       imageUrl: map['imageUrl'],
       createdAt: DateTime.tryParse(map['createdAt'] ?? '') ?? DateTime.now(),
       likes: likesList,
-      isLiked: currentUserId != null ? likesList.contains(currentUserId) : false,
+      isLiked: currentUserId != null
+          ? likesList.contains(currentUserId)
+          : false,
       username: username,
       userProfileImage: userProfileImage,
     );

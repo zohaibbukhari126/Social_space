@@ -12,7 +12,7 @@ class MainNavigation extends StatefulWidget {
 }
 
 class _MainNavigationState extends State<MainNavigation> {
-  int _selectedIndex = 0; // 0 = Home, 1 = Profile
+  int _selectedIndex = 0;
 
   final List<Widget> _screens = [
     const HomeView(),
@@ -27,7 +27,7 @@ class _MainNavigationState extends State<MainNavigation> {
 
     if (newPost is Post) {
       setState(() {
-        _selectedIndex = 0; // Back to Home
+        _selectedIndex = 0;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -36,48 +36,60 @@ class _MainNavigationState extends State<MainNavigation> {
     }
   }
 
+  Widget _buildNavItem(IconData icon, String label, int index) {
+    final isSelected = _selectedIndex == index;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedIndex = index),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 28, color: isSelected ? Colors.blueAccent : Colors.grey),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              color: isSelected ? Colors.blueAccent : Colors.grey,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: _screens[_selectedIndex],
 
-      // floating "+" button in the center
       floatingActionButton: FloatingActionButton(
-        shape: const CircleBorder(),
-        backgroundColor: Colors.blueAccent,
-        child: const Icon(Icons.add, size: 32, color: Colors.white),
         onPressed: () => _openNewPost(context),
+        backgroundColor: Colors.blueAccent,
+        elevation: 4,
+        child: const Icon(Icons.add, size: 32, color: Colors.white),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
 
-      // custom bottom bar
       bottomNavigationBar: BottomAppBar(
         shape: const CircularNotchedRectangle(),
         notchMargin: 8.0,
-        child: SizedBox(
-          height: 60,
+        elevation: 8,
+        color: Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               // Home
-              IconButton(
-                icon: Icon(
-                  Icons.home,
-                  color: _selectedIndex == 0 ? Colors.blueAccent : Colors.grey,
-                ),
-                onPressed: () => setState(() => _selectedIndex = 0),
-              ),
+              _buildNavItem(Icons.home, "Home", 0),
 
-              const SizedBox(width: 48), // space for the FAB notch
+              // Spacer for FAB
+              const SizedBox(width: 48),
 
               // Profile
-              IconButton(
-                icon: Icon(
-                  Icons.person,
-                  color: _selectedIndex == 1 ? Colors.blueAccent : Colors.grey,
-                ),
-                onPressed: () => setState(() => _selectedIndex = 1),
-              ),
+              _buildNavItem(Icons.person, "Profile", 1),
             ],
           ),
         ),

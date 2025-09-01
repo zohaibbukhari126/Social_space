@@ -1,10 +1,10 @@
-// lib/models/user.dart
+// This class represents a user in the social media app
 class AppUser {
   String uid;
   String name;
   String email;
   String username;
-  String? imageBase64; // profile image stored in Base64 format
+  String? imageBase64; // This field is intended to store the user's profile image URL or Base64 string
   int followers;
   int following;
   int postsCount;

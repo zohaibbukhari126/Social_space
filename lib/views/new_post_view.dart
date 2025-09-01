@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import 'package:quick_connect/widgets/gradient_button.dart';
 import '../viewmodels/post_viewmodel.dart';
 
 class NewPostView extends StatefulWidget {
@@ -43,14 +42,20 @@ class _NewPostViewState extends State<NewPostView> {
         Navigator.pop(context, post);
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Post uploaded successfully!')),
+          const SnackBar(
+            content: Text('Post uploaded successfully!'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Error: $e")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error: $e"),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -60,54 +65,124 @@ class _NewPostViewState extends State<NewPostView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // 🔹 Fancy green AppBar
       appBar: AppBar(
         title: const Text("Create Post"),
-        backgroundColor: Colors.deepPurple,
-        foregroundColor: Colors.white,
         centerTitle: true,
-        elevation: 0,
+        elevation: 4,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.green, Colors.teal],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: ElevatedButton(
+              onPressed: _isLoading ? null : _submitPost,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.green,
+                shape: const StadiumBorder(),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                elevation: 3,
+              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.green,
+                      ),
+                    )
+                  : const Text(
+                      "Post",
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+            ),
+          ),
+        ],
       ),
+
+      // 🔹 Fancy Body
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
           child: Column(
             children: [
-              TextFormField(
-                controller: _contentController,
-                maxLines: 4,
-                decoration: const InputDecoration(
-                  labelText: "What's on your mind?",
-                  border: OutlineInputBorder(),
+              // Text field inside green card
+              Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                validator: (value) => value == null || value.isEmpty
-                    ? "Content is required"
-                    : null,
-              ),
-              const SizedBox(height: 20),
-              _selectedImage != null
-                  ? Column(
-                      children: [
-                        Image.file(_selectedImage!, height: 200),
-                        TextButton.icon(
-                          onPressed: () =>
-                              setState(() => _selectedImage = null),
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          label: const Text("Remove Image"),
-                        ),
-                      ],
-                    )
-                  : TextButton.icon(
-                      onPressed: _pickImage,
-                      icon: const Icon(Icons.image),
-                      label: const Text("Add Image"),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: TextFormField(
+                    controller: _contentController,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      hintText: "What's on your mind?",
+                      border: InputBorder.none,
                     ),
-              const SizedBox(height: 20),
-              GradientButton(
-                text: "Post",
-                onPressed: _submitPost,
-                isLoading: _isLoading,
+                    validator: (value) => value == null || value.isEmpty
+                        ? "Content is required"
+                        : null,
+                  ),
+                ),
               ),
+              const SizedBox(height: 20),
+
+              // Image section
+              _selectedImage != null
+                  ? Card(
+                      elevation: 4,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Column(
+                        children: [
+                          Image.file(_selectedImage!,
+                              height: 200, fit: BoxFit.cover),
+                          Container(
+                            alignment: Alignment.centerRight,
+                            padding:
+                                const EdgeInsets.only(right: 8, bottom: 8),
+                            child: IconButton(
+                              icon: const Icon(Icons.delete,
+                                  color: Colors.redAccent),
+                              onPressed: () =>
+                                  setState(() => _selectedImage = null),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : OutlinedButton.icon(
+                      onPressed: _pickImage,
+                      icon: const Icon(Icons.image, color: Colors.green),
+                      label: const Text(
+                        "Add Image",
+                        style: TextStyle(color: Colors.green),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.green),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
             ],
           ),
         ),

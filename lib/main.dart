@@ -3,7 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:adaptive_theme/adaptive_theme.dart';
-import 'package:quick_connect/main_navigation.dart';
+import 'package:social_space/main_navigation.dart';
 import 'viewmodels/auth_viewmodel.dart';
 import 'viewmodels/post_viewmodel.dart';
 import 'views/login_view.dart';
@@ -46,7 +46,7 @@ class MyApp extends StatelessWidget {
       initial: AdaptiveThemeMode.system,
       builder: (theme, darkTheme) => MaterialApp(
         debugShowCheckedModeBanner: false,
-        title: 'Quick Connect',
+        title: 'Social Space',
         theme: theme,
         darkTheme: darkTheme,
         home: const StartupView(),

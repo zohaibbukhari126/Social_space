@@ -32,38 +32,60 @@ class _HomeViewState extends State<HomeView> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Quick Connect"),
-        backgroundColor: Colors.deepPurple,
+        title: const Text("Social Space"),
+        backgroundColor: Colors.teal,
         foregroundColor: Colors.white,
         centerTitle: true,
         elevation: 0,
-        actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.wb_sunny_outlined),
-            onSelected: (value) {
-              if (value == 'light') AdaptiveTheme.of(context).setLight();
-              if (value == 'dark') AdaptiveTheme.of(context).setDark();
-              if (value == 'system') AdaptiveTheme.of(context).setSystem();
-            },
-            itemBuilder: (context) => [
-              CheckedPopupMenuItem(
-                value: 'light',
-                checked: currentMode == AdaptiveThemeMode.light,
-                child: const Text("Light Theme"),
+        leading: PopupMenuButton<String>(
+          icon: const Icon(Icons.wb_sunny_outlined, color: Colors.orange),
+          onSelected: (value) {
+            if (value == 'light') AdaptiveTheme.of(context).setLight();
+            if (value == 'dark') AdaptiveTheme.of(context).setDark();
+            if (value == 'system') AdaptiveTheme.of(context).setSystem();
+          },
+          itemBuilder: (context) => [
+            PopupMenuItem(
+              value: 'light',
+              child: Row(
+                children: const [
+                  Icon(Icons.wb_sunny, color: Colors.amber),
+                  SizedBox(width: 10),
+                  Text(
+                    "Light Theme",
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ],
               ),
-              CheckedPopupMenuItem(
-                value: 'dark',
-                checked: currentMode == AdaptiveThemeMode.dark,
-                child: const Text("Dark Theme"),
+            ),
+            PopupMenuItem(
+              value: 'dark',
+              child: Row(
+                children: const [
+                  Icon(Icons.nightlight_round, color: Colors.blueGrey),
+                  SizedBox(width: 10),
+                  Text(
+                    "Dark Theme",
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ],
               ),
-              CheckedPopupMenuItem(
-                value: 'system',
-                checked: currentMode == AdaptiveThemeMode.system,
-                child: const Text("System Default"),
+            ),
+            PopupMenuItem(
+              value: 'system',
+              child: Row(
+                children: const [
+                  Icon(Icons.settings_suggest, color: Colors.teal),
+                  SizedBox(width: 10),
+                  Text(
+                    "System Default",
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
       body: Column(
         children: [
@@ -74,8 +96,8 @@ class _HomeViewState extends State<HomeView> {
               return isLoading
                   ? const LinearProgressIndicator(
                       minHeight: 4,
-                      backgroundColor: Colors.grey,
-                      color: Colors.deepPurple,
+                      backgroundColor: Colors.tealAccent, // changed
+                      color: Colors.orange, // changed
                     )
                   : const SizedBox.shrink();
             },
@@ -88,6 +110,7 @@ class _HomeViewState extends State<HomeView> {
               builder: (context, posts, child) {
                 if (posts.isEmpty) {
                   return RefreshIndicator(
+                    color: Colors.teal, // changed
                     onRefresh: _refreshPosts,
                     child: ListView(
                       physics: const AlwaysScrollableScrollPhysics(),
@@ -95,9 +118,12 @@ class _HomeViewState extends State<HomeView> {
                         SizedBox(height: 100),
                         Center(
                           child: Text(
-                            "No one has posted yet on Quick Connect.\nBe the first to post!",
+                            "Nothing here yet \nBe the first to share your thoughts!",
                             textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.black54,
+                            ), // changed
                           ),
                         ),
                       ],
@@ -106,10 +132,13 @@ class _HomeViewState extends State<HomeView> {
                 }
 
                 return RefreshIndicator(
+                  color: Colors.teal, // changed
                   onRefresh: _refreshPosts,
                   child: ListView.separated(
-                    separatorBuilder: (_, __) =>
-                        const Divider(thickness: 1, color: Colors.grey),
+                    separatorBuilder: (_, __) => const Divider(
+                      thickness: 1,
+                      color: Colors.tealAccent,
+                    ), // changed
                     itemCount: posts.length,
                     itemBuilder: (context, index) {
                       final post = posts[index];
