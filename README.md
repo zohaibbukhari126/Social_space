@@ -47,11 +47,11 @@ Copy code
    cd social-space
 Install dependencies:
 
-bash
-Copy code
-flutter pub get
-Set up Firebase:
-
+   ```bash
+   flutter pub get
+   ```
+   Set up Firebase:
+   
 Add google-services.json to android/app/
 
 Add GoogleService-Info.plist to ios/Runner/
@@ -59,7 +59,7 @@ Add GoogleService-Info.plist to ios/Runner/
 Run the app:
 
 bash
-Copy code
+
 flutter run
 🤝 Contributing
 Contributions are welcome!
